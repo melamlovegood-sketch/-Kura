@@ -4,6 +4,7 @@ import { useWishPoolStore } from '@/store/wishpool'
 import { useCountUp } from '@/hooks/useCountUp'
 import { formatAmount } from '@/lib/utils'
 import { cn } from '@/lib/utils'
+import type { WishPoolData } from '@/types/db'
 
 export function WishPoolCard() {
   const { pool, loaded } = useWishPoolStore()
@@ -19,7 +20,7 @@ export function WishPoolCard() {
   return <ActivePoolCard pool={pool} />
 }
 
-function ActivePoolCard({ pool }: { pool: NonNullable<ReturnType<typeof useWishPoolStore>['pool']> }) {
+function ActivePoolCard({ pool }: { pool: WishPoolData }) {
   const pct       = pool.target_amount > 0 ? Math.min((pool.saved_amount / pool.target_amount) * 100, 100) : 0
   const completed = pool.saved_amount >= pool.target_amount
   const animSaved = useCountUp(pool.saved_amount)

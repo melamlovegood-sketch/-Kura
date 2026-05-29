@@ -17,7 +17,7 @@ export interface SOPRule {
   order: number
 }
 
-interface ExecutionStore {
+export interface ExecutionStore {
   brands: BrandEntry[]
   sopRules: SOPRule[]
   loaded: boolean

@@ -53,25 +53,21 @@ export const useWishPoolStore = create<WishPoolStore>()(persist((set, get) => ({
       .select('*')
       .maybeSingle()
 
-    let active = (data as WishPoolData | null) ?? null
+    const active = (data as WishPoolData | null) ?? null
 
-    // A goal now exists → flush any "忍住了" amounts stashed while there was none.
-    if (active && get().pendingSavings.length > 0) {
+    if (active) {
+      set({ pool: active, loaded: true })
+
+      // A goal now exists → replay any "忍住了" amounts stashed while there was
+      // none. Going through addSavings (not a silent batch insert) means count-up
+      // animation + milestone detection fire exactly as a live add would.
       const pending = get().pendingSavings
-      await supabase.from('savings_records').insert(
-        pending.map((p) => ({ wish_pool_id: active!.id, amount: p.amount, description: p.description || null })),
-      )
-      const { data: refreshed } = await supabase.from('v_active_wish_pool').select('*').maybeSingle()
-      active = (refreshed as WishPoolData | null) ?? active
-
-      // Flushing may have hit the target — mark it completed, same as addSavings.
-      if (active && active.saved_amount >= active.target_amount && !active.completed_at) {
-        await supabase.from('wish_pools').update({ completed_at: new Date().toISOString() }).eq('id', active.id)
+      if (pending.length > 0) {
+        for (const p of pending) await get().addSavings(p.amount, p.description)
+        set({ pendingSavings: [] })
       }
-      set({ pendingSavings: [] })
+      return
     }
-
-    if (active) { set({ pool: active, loaded: true }); return }
 
     // No active pool in the view. A just-reached pool gets completed_at set and
     // is filtered out of v_active_wish_pool — keep it locally so the buy-guidance

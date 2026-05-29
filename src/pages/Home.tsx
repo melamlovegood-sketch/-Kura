@@ -88,24 +88,24 @@ export function Home() {
 
       switch (result.module) {
         case 'transaction': {
-          const d = result.data as ParsedTransaction
+          const d = result.data as unknown as ParsedTransaction
           if (d.amount > 0) setPendingTx({ data: d, source }); break
         }
-        case 'budget':    setPendingBudget(result.data as ParsedBudget); break
+        case 'budget':    setPendingBudget(result.data as unknown as ParsedBudget); break
         case 'subscription': {
-          const d = result.data as ParsedSubscription
+          const d = result.data as unknown as ParsedSubscription
           if (d.name && d.amount > 0 && d.billing_day >= 1) await subscriptionStore.add(d)
           break
         }
-        case 'impulse':   await impulseStore.add(result.data as ParsedImpulse, cooldownHours); break
+        case 'impulse':   await impulseStore.add(result.data as unknown as ParsedImpulse, cooldownHours); break
         case 'wishlist': {
-          const item = await wishlistStore.add(result.data as ParsedWishlistItem)
+          const item = await wishlistStore.add(result.data as unknown as ParsedWishlistItem)
           // Background same-category scan; never blocks the add (SPEC_PHASE2 §3).
           if (item) void duplicateStore.detect(item)
           break
         }
         case 'wish_pool': {
-          const d = result.data as ParsedSavings
+          const d = result.data as unknown as ParsedSavings
           if (d.amount <= 0) break
           if (wishPoolStore.pool) {
             await wishPoolStore.addSavings(d.amount, d.description)

@@ -6,6 +6,7 @@ import { Wishlist } from '@/pages/Wishlist'
 import { Execution } from '@/pages/Execution'
 import { Settings } from '@/pages/Settings'
 import { SplashScreen } from '@/components/SplashScreen'
+import { Onboarding } from '@/components/onboarding/Onboarding'
 import { useSettingsStore } from '@/store/settings'
 import { usePrinciplesStore } from '@/store/principles'
 import { useImpulseStore } from '@/store/impulse'
@@ -68,6 +69,7 @@ export function App() {
           <Route path="/settings"  element={<Settings />} />
         </Routes>
       </AppLayout>
+      <Onboarding />
     </BrowserRouter>
   )
 }

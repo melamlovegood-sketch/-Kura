@@ -30,7 +30,7 @@ export interface RegretBoard {
   top_category: string | null
 }
 
-interface ReviewStore {
+export interface ReviewStore {
   pendingTasks: ReviewTask[]
   loaded: boolean
   regret: RegretBoard | null

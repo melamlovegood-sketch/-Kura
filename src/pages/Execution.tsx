@@ -3,8 +3,8 @@ import { useNavigate, useLocation } from 'react-router-dom'
 import { ChevronDown, ChevronRight, Pencil, Plus, X } from 'lucide-react'
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card'
 import { Button } from '@/components/ui/button'
-import { useExecutionStore, type BrandEntry, type SOPRule } from '@/store/execution'
-import { useReviewStore } from '@/store/review'
+import { useExecutionStore, type BrandEntry, type SOPRule, type ExecutionStore } from '@/store/execution'
+import { useReviewStore, type ReviewStore } from '@/store/review'
 import { useSettingsStore } from '@/store/settings'
 import { addExecutionTransaction } from '@/store/transactions'
 import { useBudgetStore } from '@/store/budget'
@@ -67,7 +67,7 @@ export function Execution() {
 }
 
 function SetupPhase({ execStore, onStart, initialCategory = '', durationSeconds, timerMinutes }: {
-  execStore: ReturnType<typeof useExecutionStore>; onStart: (c: string, id: string) => void
+  execStore: ExecutionStore; onStart: (c: string, id: string) => void
   initialCategory?: string; durationSeconds: number; timerMinutes: number
 }) {
   const [category, setCategory] = useState(initialCategory)
@@ -104,7 +104,7 @@ function SetupPhase({ execStore, onStart, initialCategory = '', durationSeconds,
 }
 
 function TimingPhase({ phase, execStore, onExpire, onEarlyDecide }: {
-  phase: Extract<Phase, { name: 'timing' }>; execStore: ReturnType<typeof useExecutionStore>; onExpire: () => void; onEarlyDecide: () => void
+  phase: Extract<Phase, { name: 'timing' }>; execStore: ExecutionStore; onExpire: () => void; onEarlyDecide: () => void
 }) {
   const remaining = useCountdown(phase.totalSeconds, onExpire)
   const brands = execStore.brandsForCategory(phase.category)
@@ -124,7 +124,7 @@ function TimingPhase({ phase, execStore, onExpire, onEarlyDecide }: {
 }
 
 function ExpiredPhase({ phase, execStore, onBought, onSkip, onUndecided }: {
-  phase: Extract<Phase, { name: 'expired' }>; execStore: ReturnType<typeof useExecutionStore>
+  phase: Extract<Phase, { name: 'expired' }>; execStore: ExecutionStore
   onBought: () => void; onSkip: () => Promise<void>; onUndecided: () => Promise<void>
 }) {
   const [loading, setLoading] = useState(false)
@@ -150,8 +150,8 @@ function ExpiredPhase({ phase, execStore, onBought, onSkip, onUndecided }: {
 }
 
 function RecordingPhase({ phase, execStore, reviewStore, onDone }: {
-  phase: Extract<Phase, { name: 'recording' }>; execStore: ReturnType<typeof useExecutionStore>
-  reviewStore: ReturnType<typeof useReviewStore>; onDone: () => Promise<void>
+  phase: Extract<Phase, { name: 'recording' }>; execStore: ExecutionStore
+  reviewStore: ReviewStore; onDone: () => Promise<void>
 }) {
   const [itemName, setItemName] = useState('')
   const [amount, setAmount]     = useState(0)
@@ -225,7 +225,7 @@ function DonePhase({ decision, onBack }: { decision: 'skipped' | 'undecided'; on
 }
 
 function BrandSection({ category, brands, execStore, readonly = false }: {
-  category: string; brands: BrandEntry[]; execStore: ReturnType<typeof useExecutionStore>; readonly?: boolean
+  category: string; brands: BrandEntry[]; execStore: ExecutionStore; readonly?: boolean
 }) {
   const [adding, setAdding] = useState(false)
   const [newBrand, setNewBrand] = useState('')
@@ -274,7 +274,7 @@ function BrandSection({ category, brands, execStore, readonly = false }: {
 }
 
 function SOPSection({ execStore, defaultOpen = false }: {
-  execStore: ReturnType<typeof useExecutionStore>; defaultOpen?: boolean
+  execStore: ExecutionStore; defaultOpen?: boolean
 }) {
   const rules = execStore.sopRules
   const [open, setOpen]           = useState(defaultOpen)

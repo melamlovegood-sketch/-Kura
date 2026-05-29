@@ -14,6 +14,7 @@ import { useWishPoolStore } from '@/store/wishpool'
 import { useExecutionStore } from '@/store/execution'
 import { useReviewStore } from '@/store/review'
 import { useExpiryStore } from '@/store/expiry'
+import { useSubscriptionStore } from '@/store/subscriptions'
 
 export function App() {
   const [showSplash, setShowSplash] = useState(true)
@@ -27,6 +28,8 @@ export function App() {
   const loadReview     = useReviewStore   ((s) => s.load)
   const loadRegret     = useReviewStore   ((s) => s.loadRegret)
   const loadExpiry     = useExpiryStore   ((s) => s.load)
+  const loadSubs       = useSubscriptionStore((s) => s.load)
+  const generateSubTx  = useSubscriptionStore((s) => s.generateDueTransactions)
 
   useEffect(() => {
     void loadSettings()
@@ -38,7 +41,9 @@ export function App() {
     void loadReview()
     void loadRegret()
     void loadExpiry()
-  }, [loadSettings, loadPrinciples, loadImpulse, loadWishlist, loadWishPool, loadExecution, loadReview, loadRegret, loadExpiry])
+    // Load subscriptions, then auto-record any charges whose billing day has passed.
+    void loadSubs().then(() => generateSubTx())
+  }, [loadSettings, loadPrinciples, loadImpulse, loadWishlist, loadWishPool, loadExecution, loadReview, loadRegret, loadExpiry, loadSubs, generateSubTx])
 
   if (showSplash) {
     return <SplashScreen onDone={() => setShowSplash(false)} />

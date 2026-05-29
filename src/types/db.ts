@@ -4,10 +4,13 @@ export type ItemCategory =
   | 'canteen'
   | 'transport'
   | 'daily_supplies'
+  | 'subscription'
   | 'daily'
   | 'online_shopping'
   | 'entertainment'
   | 'other'
+
+export type SubscriptionCategory = 'streaming' | 'tools' | 'transport' | 'other'
 
 export type SeasonTag = 'year_round' | 'summer' | 'winter' | 'specific'
 
@@ -52,6 +55,13 @@ export interface ParsedSavings {
   description: string
 }
 
+export interface ParsedSubscription {
+  name: string
+  amount: number
+  billing_day: number
+  category: SubscriptionCategory
+}
+
 // ─── DB rows ──────────────────────────────────────────────────────────────────
 
 export interface BudgetData {
@@ -91,6 +101,16 @@ export interface WishlistItem {
   status: 'active' | 'purchased' | 'dismissed'
   impulse_record_id: string | null
   added_at: string
+}
+
+export interface Subscription {
+  id: string
+  name: string
+  amount: number
+  billing_day: number
+  category: SubscriptionCategory
+  is_active: boolean
+  created_at: string
 }
 
 export interface WishPoolData {

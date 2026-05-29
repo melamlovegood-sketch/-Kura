@@ -14,6 +14,7 @@ import { WishlistNudgeCard } from '@/components/wishlist/WishlistNudgeCard'
 import { ReviewCard } from '@/components/review/ReviewCard'
 import { RegretBoardCard } from '@/components/review/RegretBoardCard'
 import { ExpiryReminderCard } from '@/components/transaction/ExpiryReminderCard'
+import { SubscriptionReminderCard } from '@/components/subscription/SubscriptionReminderCard'
 import { useSettingsStore } from '@/store/settings'
 import { usePrinciplesStore } from '@/store/principles'
 import { useBudgetStore } from '@/store/budget'
@@ -22,11 +23,12 @@ import { useWishlistStore } from '@/store/wishlist'
 import { useWishPoolStore } from '@/store/wishpool'
 import { useReviewStore } from '@/store/review'
 import { useExpiryStore } from '@/store/expiry'
+import { useSubscriptionStore } from '@/store/subscriptions'
 import { addTransaction } from '@/store/transactions'
 import { routeIntent } from '@/lib/ai/router'
 import { fileToBase64, formatAmount } from '@/lib/utils'
 import type { IntentResult } from '@/lib/ai/types'
-import type { ParsedBudget, ParsedImpulse, ParsedSavings, ParsedTransaction, ParsedWishlistItem, WishlistItem } from '@/types/db'
+import type { ParsedBudget, ParsedImpulse, ParsedSavings, ParsedSubscription, ParsedTransaction, ParsedWishlistItem, WishlistItem } from '@/types/db'
 
 type PendingTx = { data: ParsedTransaction; source: 'text' | 'screenshot' }
 
@@ -40,6 +42,7 @@ export function Home() {
   const wishPoolStore   = useWishPoolStore()
   const reviewStore     = useReviewStore()
   const expiryStore     = useExpiryStore()
+  const subscriptionStore = useSubscriptionStore()
 
   const [text, setText]   = useState('')
   const [image, setImage] = useState<{ file: File; base64: string } | null>(null)
@@ -84,6 +87,11 @@ export function Home() {
           if (d.amount > 0) setPendingTx({ data: d, source }); break
         }
         case 'budget':    setPendingBudget(result.data as ParsedBudget); break
+        case 'subscription': {
+          const d = result.data as ParsedSubscription
+          if (d.name && d.amount > 0 && d.billing_day >= 1) await subscriptionStore.add(d)
+          break
+        }
         case 'impulse':   await impulseStore.add(result.data as ParsedImpulse, cooldownHours); break
         case 'wishlist':  await wishlistStore.add(result.data as ParsedWishlistItem); break
         case 'wish_pool': {
@@ -202,6 +210,7 @@ export function Home() {
       {!pendingTx && !pendingBudget && (
         <>
           <WishPoolReachedCard />
+          <SubscriptionReminderCard />
           <ExpiryReminderCard />
           {expiredImpulse && <ImpulseExpiredCard record={expiredImpulse} onApprove={handleImpulseApprove} onDismiss={(id) => impulseStore.dismiss(id)} />}
           {!expiredImpulse && reviewStore.pendingTasks[0] && <ReviewCard task={reviewStore.pendingTasks[0]} />}

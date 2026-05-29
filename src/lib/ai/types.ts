@@ -38,6 +38,7 @@ export type IntentModule =
   | 'wish_pool'
   | 'execution'
   | 'budget'
+  | 'subscription'
   | 'principles'
   | 'unknown'
 

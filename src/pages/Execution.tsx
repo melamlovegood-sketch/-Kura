@@ -8,13 +8,19 @@ import { useReviewStore, type ReviewStore } from '@/store/review'
 import { useSettingsStore } from '@/store/settings'
 import { addExecutionTransaction } from '@/store/transactions'
 import { useBudgetStore } from '@/store/budget'
+import { DecisionBrief } from '@/components/execution/DecisionBrief'
+import { ResearchChecklist } from '@/components/execution/ResearchChecklist'
+import { DecisionChat } from '@/components/execution/DecisionChat'
+import { WrapUpCard } from '@/components/execution/WrapUpCard'
+import type { DecisionMode, ExecutionContext } from '@/lib/generateDecisionBrief'
 import { cn } from '@/lib/utils'
 
 type Phase =
   | { name: 'setup' }
-  | { name: 'timing';    category: string; sessionId: string; totalSeconds: number }
-  | { name: 'expired';   category: string; sessionId: string }
-  | { name: 'recording'; category: string; sessionId: string }
+  | { name: 'brief'; category: string }
+  | { name: 'execute'; category: string; sessionId: string; mode: DecisionMode; startedAt: number; totalSeconds: number; ctx: ExecutionContext }
+  | { name: 'recording'; category: string; sessionId: string; startedAt: number }
+  | { name: 'wrapup'; category: string; sessionId: string; itemName: string; brand: string; amount: number; elapsedSeconds: number }
   | { name: 'done'; decision: 'skipped' | 'undecided' }
 
 export function Execution() {
@@ -28,8 +34,9 @@ export function Execution() {
   const [phase, setPhase] = useState<Phase>({ name: 'setup' })
 
   // Optional prefill passed from Home's intent routing (e.g. "我要去买球鞋").
-  const prefill = (location.state as { prefill?: { category?: string } } | null)?.prefill
+  const prefill = (location.state as { prefill?: { category?: string; estimatedPrice?: number | null } } | null)?.prefill
   const initialCategory = prefill?.category ?? ''
+  const estimatedPrice  = prefill?.estimatedPrice ?? null
 
   return (
     <div className="flex flex-col gap-4 pt-6 w-full max-w-[640px] mx-auto px-6">
@@ -37,28 +44,46 @@ export function Execution() {
 
       {phase.name === 'setup' && (
         <SetupPhase execStore={execStore} initialCategory={initialCategory}
-          durationSeconds={durationSeconds} timerMinutes={timerMinutes}
-          onStart={(category, sessionId) => setPhase({ name: 'timing', category, sessionId, totalSeconds: durationSeconds })}
+          onStart={(category) => setPhase({ name: 'brief', category })}
         />
       )}
-      {phase.name === 'timing' && (
-        <TimingPhase phase={phase} execStore={execStore}
-          onExpire={() => setPhase({ name: 'expired', category: phase.category, sessionId: phase.sessionId })}
-          onEarlyDecide={() => setPhase({ name: 'expired', category: phase.category, sessionId: phase.sessionId })}
+
+      {phase.name === 'brief' && (
+        <DecisionBrief
+          category={phase.category}
+          estimatedPrice={estimatedPrice}
+          execStore={execStore}
+          onStart={async (mode, ctx) => {
+            const sessionId = await execStore.createSession(phase.category, durationSeconds)
+            setPhase({ name: 'execute', category: phase.category, sessionId, mode, startedAt: Date.now(), totalSeconds: durationSeconds, ctx })
+          }}
         />
       )}
-      {phase.name === 'expired' && (
-        <ExpiredPhase phase={phase} execStore={execStore}
-          onBought={() => setPhase({ name: 'recording', category: phase.category, sessionId: phase.sessionId })}
+
+      {phase.name === 'execute' && (
+        <ExecutePhase phase={phase}
+          onBuy={() => setPhase({ name: 'recording', category: phase.category, sessionId: phase.sessionId, startedAt: phase.startedAt })}
           onSkip={async () => { await execStore.endSession(phase.sessionId, 'skipped'); setPhase({ name: 'done', decision: 'skipped' }) }}
           onUndecided={async () => { await execStore.endSession(phase.sessionId, 'undecided'); setPhase({ name: 'done', decision: 'undecided' }) }}
         />
       )}
+
       {phase.name === 'recording' && (
         <RecordingPhase phase={phase} execStore={execStore} reviewStore={reviewStore}
-          onDone={async () => { void budgetStore.refresh(); navigate('/') }}
+          onSaved={({ itemName, brand, amount }) => {
+            const elapsedSeconds = Math.round((Date.now() - phase.startedAt) / 1000)
+            setPhase({ name: 'wrapup', category: phase.category, sessionId: phase.sessionId, itemName, brand, amount, elapsedSeconds })
+          }}
         />
       )}
+
+      {phase.name === 'wrapup' && (
+        <WrapUpCard category={phase.category} sessionId={phase.sessionId}
+          itemName={phase.itemName} brand={phase.brand} amount={phase.amount} elapsedSeconds={phase.elapsedSeconds}
+          onContinue={() => { void budgetStore.refresh(); navigate('/') }}
+        />
+      )}
+
       {phase.name === 'done' && (
         <DonePhase decision={phase.decision} onBack={() => navigate('/')} />
       )}
@@ -66,19 +91,15 @@ export function Execution() {
   )
 }
 
-function SetupPhase({ execStore, onStart, initialCategory = '', durationSeconds, timerMinutes }: {
-  execStore: ExecutionStore; onStart: (c: string, id: string) => void
-  initialCategory?: string; durationSeconds: number; timerMinutes: number
+function SetupPhase({ execStore, onStart, initialCategory = '' }: {
+  execStore: ExecutionStore; onStart: (c: string) => void; initialCategory?: string
 }) {
   const [category, setCategory] = useState(initialCategory)
-  const [starting, setStarting] = useState(false)
   const categoryBrands = category.trim() ? execStore.brandsForCategory(category.trim()) : []
 
-  async function handleStart() {
+  function handleStart() {
     if (!category.trim()) return
-    setStarting(true)
-    const id = await execStore.createSession(category.trim(), durationSeconds)
-    setStarting(false); onStart(category.trim(), id)
+    onStart(category.trim())
   }
 
   return (
@@ -88,13 +109,11 @@ function SetupPhase({ execStore, onStart, initialCategory = '', durationSeconds,
         <CardContent className="flex flex-col gap-3">
           <input
             type="text" value={category} onChange={(e) => setCategory(e.target.value)}
-            onKeyDown={(e) => { if (e.key === 'Enter') void handleStart() }}
+            onKeyDown={(e) => { if (e.key === 'Enter') handleStart() }}
             placeholder="品类，如：球鞋、裤子、耳机…" autoFocus
             className="w-full bg-transparent text-[15px] text-ink outline-none border-b-theme focus:border-b-[var(--text-muted)] pb-1 placeholder:text-ink-4 transition-colors"
           />
-          <Button onClick={() => void handleStart()} disabled={!category.trim() || starting}>
-            {starting ? '准备中…' : `开始 ${timerMinutes} 分钟计时 →`}
-          </Button>
+          <Button onClick={handleStart} disabled={!category.trim()}>生成决策简报 →</Button>
         </CardContent>
       </Card>
       {category.trim() && <BrandSection category={category.trim()} brands={categoryBrands} execStore={execStore} />}
@@ -103,55 +122,88 @@ function SetupPhase({ execStore, onStart, initialCategory = '', durationSeconds,
   )
 }
 
-function TimingPhase({ phase, execStore, onExpire, onEarlyDecide }: {
-  phase: Extract<Phase, { name: 'timing' }>; execStore: ExecutionStore; onExpire: () => void; onEarlyDecide: () => void
+function ExecutePhase({ phase, onBuy, onSkip, onUndecided }: {
+  phase: Extract<Phase, { name: 'execute' }>
+  onBuy: () => void; onSkip: () => Promise<void>; onUndecided: () => Promise<void>
 }) {
-  const remaining = useCountdown(phase.totalSeconds, onExpire)
+  const execStore = useExecutionStore()
+  const [mode, setMode] = useState<DecisionMode>(phase.mode)
   const brands = execStore.brandsForCategory(phase.category)
+
   return (
     <>
-      <Card>
-        <CardContent className="flex flex-col items-center gap-4 py-4">
-          <p className="text-[13px] text-ink-4">{phase.category}</p>
-          <CountdownDisplay remaining={remaining} total={phase.totalSeconds} />
-          <Button variant="outline" size="sm" onClick={onEarlyDecide}>提前决策</Button>
-        </CardContent>
-      </Card>
+      {/* Mode toggle — AI suggested one on entry, user can switch any time. */}
+      <div className="flex gap-2">
+        <ModeChip active={mode === 'fast'} onClick={() => setMode('fast')} label="⚡ 快速决策" />
+        <ModeChip active={mode === 'research'} onClick={() => setMode('research')} label="🔍 研究模式" />
+      </div>
+
+      {mode === 'fast' ? (
+        <FastMode phase={phase} onBuy={onBuy} onSkip={onSkip} onUndecided={onUndecided} />
+      ) : (
+        <ResearchChecklist category={phase.category} estimatedPrice={phase.ctx.estimatedPrice}
+          startedAt={phase.startedAt} onConfirm={onBuy} />
+      )}
+
       {brands.length > 0 && <BrandSection category={phase.category} brands={brands} execStore={execStore} readonly />}
-      <SOPSection execStore={execStore} />
+
+      <Card>
+        <p className="mb-3 text-[11px] font-medium uppercase tracking-[0.14em] text-ink-3">决策助手</p>
+        <DecisionChat context={phase.ctx} />
+      </Card>
     </>
   )
 }
 
-function ExpiredPhase({ phase, execStore, onBought, onSkip, onUndecided }: {
-  phase: Extract<Phase, { name: 'expired' }>; execStore: ExecutionStore
-  onBought: () => void; onSkip: () => Promise<void>; onUndecided: () => Promise<void>
+function ModeChip({ active, onClick, label }: { active: boolean; onClick: () => void; label: string }) {
+  return (
+    <button onClick={onClick}
+      className={cn('flex-1 rounded-xl border px-3 py-2 text-[14px] font-medium transition-colors',
+        active ? 'border-[var(--accent)] bg-card-alt text-ink' : 'border-theme text-ink-3 hover:bg-card-alt')}>
+      {label}
+    </button>
+  )
+}
+
+function FastMode({ phase, onBuy, onSkip, onUndecided }: {
+  phase: Extract<Phase, { name: 'execute' }>
+  onBuy: () => void; onSkip: () => Promise<void>; onUndecided: () => Promise<void>
 }) {
+  const [decided, setDecided] = useState(false)
   const [loading, setLoading] = useState(false)
-  const brands = execStore.brandsForCategory(phase.category)
+  const remaining = useCountdown(phase.totalSeconds, () => setDecided(true))
   async function handle(action: () => Promise<void>) { setLoading(true); try { await action() } finally { setLoading(false) } }
 
-  return (
-    <>
+  if (decided) {
+    return (
       <Card>
         <CardContent className="flex flex-col items-center gap-4 py-6 text-center">
-          <p className="font-serif text-2xl text-ink">时间到了</p>
-          <p className="text-[15px] text-ink-3">{phase.category} · 做出决定</p>
+          <p className="font-serif text-2xl text-ink">{remaining <= 0 ? '时间到了' : '做出决定'}</p>
+          <p className="text-[15px] text-ink-3">{phase.category}</p>
           <div className="flex w-full gap-2">
             <Button variant="outline" size="sm" className="flex-1" onClick={() => void handle(onSkip)} disabled={loading}>跳过</Button>
             <Button variant="outline" size="sm" className="flex-1" onClick={() => void handle(onUndecided)} disabled={loading}>留着想</Button>
-            <Button size="sm" className="flex-1" onClick={onBought} disabled={loading}>买了 →</Button>
+            <Button size="sm" className="flex-1" onClick={onBuy} disabled={loading}>买了 →</Button>
           </div>
         </CardContent>
       </Card>
-      {brands.length > 0 && <BrandSection category={phase.category} brands={brands} execStore={execStore} readonly />}
-    </>
+    )
+  }
+
+  return (
+    <Card>
+      <CardContent className="flex flex-col items-center gap-4 py-4">
+        <p className="text-[13px] text-ink-4">{phase.category}</p>
+        <CountdownDisplay remaining={remaining} total={phase.totalSeconds} />
+        <Button variant="outline" size="sm" onClick={() => setDecided(true)}>提前决策</Button>
+      </CardContent>
+    </Card>
   )
 }
 
-function RecordingPhase({ phase, execStore, reviewStore, onDone }: {
+function RecordingPhase({ phase, execStore, reviewStore, onSaved }: {
   phase: Extract<Phase, { name: 'recording' }>; execStore: ExecutionStore
-  reviewStore: ReviewStore; onDone: () => Promise<void>
+  reviewStore: ReviewStore; onSaved: (r: { itemName: string; brand: string; amount: number }) => void
 }) {
   const [itemName, setItemName] = useState('')
   const [amount, setAmount]     = useState(0)
@@ -173,7 +225,7 @@ function RecordingPhase({ phase, execStore, reviewStore, onDone }: {
       }
       const txId = await addExecutionTransaction({ amount, description: name, executionCategory: phase.category, executionSessionId: phase.sessionId })
       await reviewStore.createTasksForPurchase({ item_name: name, brand: brandName || undefined, category: phase.category, transactionId: txId })
-      await onDone()
+      onSaved({ itemName: name, brand: brandName, amount })
     } finally { setSaving(false) }
   }
 
@@ -208,7 +260,7 @@ function RecordingPhase({ phase, execStore, reviewStore, onDone }: {
 
         <p className="text-[13px] text-ink-4">会自动生成 7 天和 30 天复盘提醒</p>
         <div className="flex justify-end border-t-theme pt-3">
-          <Button onClick={() => void handleConfirm()} disabled={saving || amount <= 0}>{saving ? '保存中…' : '确认'}</Button>
+          <Button onClick={() => void handleConfirm()} disabled={saving || amount <= 0}>{saving ? '保存中…' : '确认购买'}</Button>
         </div>
       </CardContent>
     </Card>

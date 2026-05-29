@@ -164,6 +164,24 @@
 
 ---
 
+## 数据库迁移状态
+
+> 迁移文件在 `supabase/migrations/`，按编号顺序在 Supabase Dashboard → SQL Editor 执行。
+> 线上验证日期：2026-05-29（用 anon key 实测，非仅看文件）。
+
+| 迁移 | 内容 | 线上状态 |
+| --- | --- | --- |
+| `0001_fix_user_settings.sql` | 补齐 `user_settings` 列（`cooldown_hours` / `ai_provider` / `ai_model` / `ai_api_key` / `theme` / `created_at` / `updated_at`）+ `theme` CHECK 约束 + 保证单行 | ✅ **已应用并验证** |
+| `0002_fix_transactions_rls.sql` | `ALTER TABLE transactions DISABLE ROW LEVEL SECURITY`（修复确认记账 401 / 42501） | ✅ **已应用并验证** |
+
+**验证方式：**
+- 0001 — 一次性 SELECT 全部新增列返回 200（缺列会 400）；`user_settings` 行数 = 1；`theme=warm`、`ai_api_key` 已设置。
+- 0002 — 用之前会触发 42501 的同形 insert 实测：写入返回 **201**，清理 DELETE 成功，复查无残留测试行。
+
+> 重建数据库时：先跑 `schema.sql`，再按 0001 → 0002 顺序应用迁移，即可复现完整可用状态。
+
+---
+
 ## 下一步建议（按 SPEC 阶段优先级）
 
 - **补全第三阶段细节**：执行层计时时长可调、SOP 可编辑、品牌库冷启动引导

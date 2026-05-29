@@ -21,7 +21,7 @@ export function Wishlist() {
   const pendingImpulse = impulseStore.items.filter((i) => i.status === 'pending')
 
   return (
-    <div className="flex flex-col gap-5 pt-6">
+    <div className="flex flex-col gap-5 pt-6 w-full max-w-[640px] mx-auto px-6">
       <h1 className="text-base font-medium text-ink">清单</h1>
 
       <section className="flex flex-col gap-3">

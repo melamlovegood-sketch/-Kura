@@ -125,7 +125,7 @@ export function Home() {
     : null
 
   return (
-    <ImageDropZone onFile={handleFileSelect} className="flex min-h-full flex-col gap-3 pt-6">
+    <ImageDropZone onFile={handleFileSelect} className="flex min-h-full flex-col gap-3 pt-6 w-full max-w-[640px] mx-auto px-6">
       <BudgetCard />
       <WishPoolCard />
 

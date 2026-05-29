@@ -81,10 +81,15 @@
 
 /* ─── Base styles ─────────────────────────────────────────────────────────── */
 
-* {
-  box-sizing: border-box;
-  margin: 0;
-  padding: 0;
+/* Must live in @layer base — an unlayered universal reset would override every
+   Tailwind margin/padding utility (mx-auto, px-6, pt-6…), since unlayered rules
+   win over layered ones in the cascade regardless of specificity. */
+@layer base {
+  * {
+    box-sizing: border-box;
+    margin: 0;
+    padding: 0;
+  }
 }
 
 html,

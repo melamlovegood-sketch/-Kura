@@ -36,11 +36,9 @@ export function AppLayout({ children }: { children: ReactNode }) {
       {/* Spacer that reserves space for the fixed desktop header */}
       <div className="hidden md:block h-[52px] shrink-0" />
 
-      {/* ── Main content ──────────────────────────────────────── */}
-      <main className="flex-1 overflow-y-auto bg-page">
-        <div className="w-full max-w-[640px] mx-auto px-6 md:pt-9 pb-20 md:pb-36">
-          {children}
-        </div>
+      {/* ── Main content (full-width pass-through; pages center themselves) ── */}
+      <main className="flex-1 overflow-y-auto bg-page pb-20 md:pb-36">
+        {children}
       </main>
 
       {/* ── Mobile bottom nav (<md) ───────────────────────────── */}

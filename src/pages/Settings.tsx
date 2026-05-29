@@ -43,7 +43,7 @@ export function Settings() {
   }
 
   return (
-    <div className="flex flex-col gap-5 pt-6">
+    <div className="flex flex-col gap-5 pt-6 w-full max-w-[640px] mx-auto px-6">
       <h1 className="text-base font-medium text-ink">设置</h1>
 
       {/* ── Theme ── */}

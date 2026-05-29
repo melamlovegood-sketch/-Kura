@@ -10,6 +10,7 @@ import { WishPoolReachedCard } from '@/components/wishpool/WishPoolReachedCard'
 import { MilestoneAnimation } from '@/components/wishpool/MilestoneAnimation'
 import { ConfirmTransactionCard } from '@/components/transaction/ConfirmTransactionCard'
 import { ImpulseExpiredCard } from '@/components/impulse/ImpulseExpiredCard'
+import { ImpulseInterceptor } from '@/components/impulse/ImpulseInterceptor'
 import { WishlistNudgeCard } from '@/components/wishlist/WishlistNudgeCard'
 import { ReviewCard } from '@/components/review/ReviewCard'
 import { RegretBoardCard } from '@/components/review/RegretBoardCard'
@@ -59,6 +60,7 @@ export function Home() {
   const [pendingTx,     setPendingTx]     = useState<PendingTx | null>(null)
   const [pendingBudget, setPendingBudget] = useState<ParsedBudget | null>(null)
   const [savingsPrompt, setSavingsPrompt] = useState<ParsedSavings | null>(null)
+  const [interceptorOpen, setInterceptorOpen] = useState(false)
 
   useEffect(() => { void budgetStore.refresh() }, []) // eslint-disable-line react-hooks/exhaustive-deps
 
@@ -205,6 +207,7 @@ export function Home() {
 
   return (
     <ImageDropZone onFile={handleFileSelect} className="flex min-h-full flex-col gap-3 pt-6 w-full max-w-[640px] mx-auto px-6">
+      {interceptorOpen && <ImpulseInterceptor onClose={() => setInterceptorOpen(false)} />}
       <MilestoneAnimation />
       <NoApiKeyBanner />
       <BudgetCard />
@@ -260,6 +263,14 @@ export function Home() {
       {/* Dialog bar — full-width outer, centered inner */}
       <div className="fixed bottom-14 md:bottom-[68px] left-0 right-0 z-30 border-t-theme bg-card md:bg-page">
         <div className="mx-auto w-full max-w-[640px] px-6 py-3">
+          {/* Impulse interceptor CTA */}
+          <button
+            onClick={() => setInterceptorOpen(true)}
+            className="mb-2.5 w-full rounded-xl border-theme bg-card-alt py-2.5 text-center text-[14px] font-medium text-ink-2 transition-colors hover:text-ink active:bg-[var(--bg-card-alt)]"
+          >
+            我现在想买……
+          </button>
+
           {image && (
             <div className="mb-2 flex items-center gap-2">
               <span className="max-w-[200px] truncate text-[13px] text-ink-4">{image.file.name}</span>

@@ -16,6 +16,7 @@ import { useReviewStore } from '@/store/review'
 import { useExpiryStore } from '@/store/expiry'
 import { useSubscriptionStore } from '@/store/subscriptions'
 import { useAchievementsStore } from '@/store/achievements'
+import { usePersonaStore } from '@/store/persona'
 
 export function App() {
   const [showSplash, setShowSplash] = useState(true)
@@ -33,6 +34,7 @@ export function App() {
   const generateSubTx  = useSubscriptionStore((s) => s.generateDueTransactions)
   const loadAchievements = useAchievementsStore((s) => s.load)
   const recomputeAch     = useAchievementsStore((s) => s.recompute)
+  const generatePersona  = usePersonaStore((s) => s.generate)
 
   useEffect(() => {
     void loadSettings()
@@ -48,7 +50,9 @@ export function App() {
     void loadSubs().then(() => generateSubTx())
     // Load cached achievements/streak, then refresh from the DB.
     void loadAchievements().then(() => recomputeAch())
-  }, [loadSettings, loadPrinciples, loadImpulse, loadWishlist, loadWishPool, loadExecution, loadReview, loadRegret, loadExpiry, loadSubs, generateSubTx, loadAchievements, recomputeAch])
+    // Build last month's spending-persona report.
+    void generatePersona()
+  }, [loadSettings, loadPrinciples, loadImpulse, loadWishlist, loadWishPool, loadExecution, loadReview, loadRegret, loadExpiry, loadSubs, generateSubTx, loadAchievements, recomputeAch, generatePersona])
 
   if (showSplash) {
     return <SplashScreen onDone={() => setShowSplash(false)} />

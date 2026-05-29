@@ -6,6 +6,7 @@ import type { AIAdapter, AIProvider } from '@/lib/ai/types'
 
 interface Settings {
   cooldownHours: number
+  timerMinutes: number
   aiProvider: AIProvider
   aiModel: string
   aiApiKey: string
@@ -21,6 +22,7 @@ interface SettingsStore extends Settings {
 
 const DEFAULTS: Settings = {
   cooldownHours: 72,
+  timerMinutes: 15,
   aiProvider: 'qwen',
   aiModel: 'qwen-vl-plus',
   aiApiKey: '',
@@ -47,6 +49,7 @@ export const useSettingsStore = create<SettingsStore>((set, get) => ({
 
     const settings: Settings = {
       cooldownHours: data.cooldown_hours ?? DEFAULTS.cooldownHours,
+      timerMinutes:  data.timer_minutes ?? DEFAULTS.timerMinutes,
       aiProvider:    (data.ai_provider as AIProvider) ?? DEFAULTS.aiProvider,
       aiModel:       data.ai_model ?? DEFAULTS.aiModel,
       aiApiKey:      data.ai_api_key ?? '',
@@ -76,6 +79,7 @@ export const useSettingsStore = create<SettingsStore>((set, get) => ({
 
     const row = {
       cooldown_hours: next.cooldownHours,
+      timer_minutes:  next.timerMinutes,
       ai_provider:    next.aiProvider,
       ai_model:       next.aiModel,
       ai_api_key:     next.aiApiKey || null,

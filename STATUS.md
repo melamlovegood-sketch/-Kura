@@ -173,12 +173,14 @@
 | --- | --- | --- |
 | `0001_fix_user_settings.sql` | 补齐 `user_settings` 列（`cooldown_hours` / `ai_provider` / `ai_model` / `ai_api_key` / `theme` / `created_at` / `updated_at`）+ `theme` CHECK 约束 + 保证单行 | ✅ **已应用并验证** |
 | `0002_fix_transactions_rls.sql` | `ALTER TABLE transactions DISABLE ROW LEVEL SECURITY`（修复确认记账 401 / 42501） | ✅ **已应用并验证** |
+| `0003_add_timer_minutes.sql` | `ALTER TABLE user_settings ADD COLUMN timer_minutes`（执行层默认计时时长，默认 15min，用户可改） | ⏳ **待应用**（在 SQL Editor 执行） |
 
 **验证方式：**
 - 0001 — 一次性 SELECT 全部新增列返回 200（缺列会 400）；`user_settings` 行数 = 1；`theme=warm`、`ai_api_key` 已设置。
 - 0002 — 用之前会触发 42501 的同形 insert 实测：写入返回 **201**，清理 DELETE 成功，复查无残留测试行。
+- 0003 — 应用后 SELECT `timer_minutes` 返回 200 且默认值为 15；设置页保存计时时长应返回 200（未应用时含该字段的写入会 400）。
 
-> 重建数据库时：先跑 `schema.sql`，再按 0001 → 0002 顺序应用迁移，即可复现完整可用状态。
+> 重建数据库时：先跑 `schema.sql`，再按 0001 → 0002 → 0003 顺序应用迁移，即可复现完整可用状态。
 
 ---
 

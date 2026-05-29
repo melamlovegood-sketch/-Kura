@@ -25,6 +25,7 @@ export function Settings() {
   const [model,    setModel]    = useState(store.aiModel)
   const [apiKey,   setApiKey]   = useState(store.aiApiKey)
   const [cooldown, setCooldown] = useState(String(store.cooldownHours))
+  const [timer,    setTimer]    = useState(String(store.timerMinutes))
   const [saving,   setSaving]   = useState(false)
   const [saved,    setSaved]    = useState(false)
 
@@ -32,13 +33,14 @@ export function Settings() {
     if (!store.loaded) return
     setProvider(store.aiProvider); setModel(store.aiModel)
     setApiKey(store.aiApiKey); setCooldown(String(store.cooldownHours))
+    setTimer(String(store.timerMinutes))
   }, [store.loaded]) // eslint-disable-line react-hooks/exhaustive-deps
 
   function handleProviderChange(p: AIProvider) { setProvider(p); setModel(DEFAULT_MODELS[p]) }
 
   async function handleSave() {
     setSaving(true)
-    await store.update({ aiProvider: provider, aiModel: model, aiApiKey: apiKey, cooldownHours: Number(cooldown) || 72 })
+    await store.update({ aiProvider: provider, aiModel: model, aiApiKey: apiKey, cooldownHours: Number(cooldown) || 72, timerMinutes: Number(timer) || 15 })
     setSaving(false); setSaved(true); setTimeout(() => setSaved(false), 2000)
   }
 
@@ -113,6 +115,17 @@ export function Settings() {
           <div className="flex items-center gap-3">
             <Input type="number" value={cooldown} onChange={(e) => setCooldown(e.target.value)} className="w-24" min={1} max={168} />
             <span className="text-[15px] text-ink-3">小时（默认 72h）</span>
+          </div>
+        </CardContent>
+      </Card>
+
+      {/* ── Execution timer ── */}
+      <Card>
+        <CardHeader><CardTitle>默认计时时长</CardTitle></CardHeader>
+        <CardContent>
+          <div className="flex items-center gap-3">
+            <Input type="number" value={timer} onChange={(e) => setTimer(e.target.value)} className="w-24" min={1} max={120} />
+            <span className="text-[15px] text-ink-3">分钟（执行层下单前的强制冷静计时，默认 15min）</span>
           </div>
         </CardContent>
       </Card>

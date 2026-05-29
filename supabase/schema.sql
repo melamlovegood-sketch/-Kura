@@ -31,12 +31,14 @@ CREATE TABLE user_settings (
   ai_model        text NOT NULL DEFAULT 'qwen-vl-plus',
   ai_api_key      text,
   theme           text NOT NULL DEFAULT 'warm' CHECK (theme IN ('warm', 'cool', 'dark')),
+  timer_minutes   integer NOT NULL DEFAULT 15,   -- execution-layer default countdown (minutes)
   created_at      timestamptz NOT NULL DEFAULT now(),
   updated_at      timestamptz NOT NULL DEFAULT now()
 );
 
 -- If applying to an existing DB:
 -- ALTER TABLE user_settings ADD COLUMN IF NOT EXISTS theme text NOT NULL DEFAULT 'warm' CHECK (theme IN ('warm', 'cool', 'dark'));
+-- ALTER TABLE user_settings ADD COLUMN IF NOT EXISTS timer_minutes integer NOT NULL DEFAULT 15;
 
 -- ─── monthly_budgets ──────────────────────────────────────────────────────────
 

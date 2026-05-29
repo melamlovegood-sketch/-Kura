@@ -5,6 +5,7 @@ import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card'
 import { Button } from '@/components/ui/button'
 import { useExecutionStore, type BrandEntry } from '@/store/execution'
 import { useReviewStore } from '@/store/review'
+import { useSettingsStore } from '@/store/settings'
 import { addExecutionTransaction } from '@/store/transactions'
 import { useBudgetStore } from '@/store/budget'
 import { cn } from '@/lib/utils'
@@ -16,14 +17,14 @@ type Phase =
   | { name: 'recording'; category: string; sessionId: string }
   | { name: 'done'; decision: 'skipped' | 'undecided' }
 
-const DEFAULT_DURATION = 15 * 60
-
 export function Execution() {
   const navigate    = useNavigate()
   const location    = useLocation()
   const execStore   = useExecutionStore()
   const reviewStore = useReviewStore()
   const budgetStore = useBudgetStore()
+  const timerMinutes    = useSettingsStore((s) => s.timerMinutes)
+  const durationSeconds = Math.max(1, timerMinutes) * 60
   const [phase, setPhase] = useState<Phase>({ name: 'setup' })
 
   // Optional prefill passed from Home's intent routing (e.g. "我要去买球鞋").
@@ -36,7 +37,8 @@ export function Execution() {
 
       {phase.name === 'setup' && (
         <SetupPhase execStore={execStore} initialCategory={initialCategory}
-          onStart={(category, sessionId) => setPhase({ name: 'timing', category, sessionId, totalSeconds: DEFAULT_DURATION })}
+          durationSeconds={durationSeconds} timerMinutes={timerMinutes}
+          onStart={(category, sessionId) => setPhase({ name: 'timing', category, sessionId, totalSeconds: durationSeconds })}
         />
       )}
       {phase.name === 'timing' && (
@@ -64,7 +66,10 @@ export function Execution() {
   )
 }
 
-function SetupPhase({ execStore, onStart, initialCategory = '' }: { execStore: ReturnType<typeof useExecutionStore>; onStart: (c: string, id: string) => void; initialCategory?: string }) {
+function SetupPhase({ execStore, onStart, initialCategory = '', durationSeconds, timerMinutes }: {
+  execStore: ReturnType<typeof useExecutionStore>; onStart: (c: string, id: string) => void
+  initialCategory?: string; durationSeconds: number; timerMinutes: number
+}) {
   const [category, setCategory] = useState(initialCategory)
   const [starting, setStarting] = useState(false)
   const categoryBrands = category.trim() ? execStore.brandsForCategory(category.trim()) : []
@@ -72,7 +77,7 @@ function SetupPhase({ execStore, onStart, initialCategory = '' }: { execStore: R
   async function handleStart() {
     if (!category.trim()) return
     setStarting(true)
-    const id = await execStore.createSession(category.trim(), DEFAULT_DURATION)
+    const id = await execStore.createSession(category.trim(), durationSeconds)
     setStarting(false); onStart(category.trim(), id)
   }
 
@@ -88,7 +93,7 @@ function SetupPhase({ execStore, onStart, initialCategory = '' }: { execStore: R
             className="w-full bg-transparent text-[15px] text-ink outline-none border-b-theme focus:border-b-[var(--text-muted)] pb-1 placeholder:text-ink-4 transition-colors"
           />
           <Button onClick={() => void handleStart()} disabled={!category.trim() || starting}>
-            {starting ? '准备中…' : '开始 15 分钟计时 →'}
+            {starting ? '准备中…' : `开始 ${timerMinutes} 分钟计时 →`}
           </Button>
         </CardContent>
       </Card>

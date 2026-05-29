@@ -1,5 +1,5 @@
 import { useEffect, useRef, useState } from 'react'
-import { useNavigate } from 'react-router-dom'
+import { useNavigate, useLocation } from 'react-router-dom'
 import { ChevronDown, ChevronRight, Plus } from 'lucide-react'
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card'
 import { Button } from '@/components/ui/button'
@@ -20,17 +20,22 @@ const DEFAULT_DURATION = 15 * 60
 
 export function Execution() {
   const navigate    = useNavigate()
+  const location    = useLocation()
   const execStore   = useExecutionStore()
   const reviewStore = useReviewStore()
   const budgetStore = useBudgetStore()
   const [phase, setPhase] = useState<Phase>({ name: 'setup' })
+
+  // Optional prefill passed from Home's intent routing (e.g. "我要去买球鞋").
+  const prefill = (location.state as { prefill?: { category?: string } } | null)?.prefill
+  const initialCategory = prefill?.category ?? ''
 
   return (
     <div className="flex flex-col gap-4 pt-6 w-full max-w-[640px] mx-auto px-6">
       <h1 className="text-base font-medium text-ink">执行层</h1>
 
       {phase.name === 'setup' && (
-        <SetupPhase execStore={execStore}
+        <SetupPhase execStore={execStore} initialCategory={initialCategory}
           onStart={(category, sessionId) => setPhase({ name: 'timing', category, sessionId, totalSeconds: DEFAULT_DURATION })}
         />
       )}
@@ -59,8 +64,8 @@ export function Execution() {
   )
 }
 
-function SetupPhase({ execStore, onStart }: { execStore: ReturnType<typeof useExecutionStore>; onStart: (c: string, id: string) => void }) {
-  const [category, setCategory] = useState('')
+function SetupPhase({ execStore, onStart, initialCategory = '' }: { execStore: ReturnType<typeof useExecutionStore>; onStart: (c: string, id: string) => void; initialCategory?: string }) {
+  const [category, setCategory] = useState(initialCategory)
   const [starting, setStarting] = useState(false)
   const categoryBrands = category.trim() ? execStore.brandsForCategory(category.trim()) : []
 

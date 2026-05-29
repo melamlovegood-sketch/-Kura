@@ -1,4 +1,5 @@
 import { useEffect, useRef, useState } from 'react'
+import { useNavigate } from 'react-router-dom'
 import { ImagePlus, Send, X } from 'lucide-react'
 import { Button } from '@/components/ui/button'
 import { Card } from '@/components/ui/card'
@@ -25,6 +26,7 @@ import type { ParsedBudget, ParsedImpulse, ParsedSavings, ParsedTransaction, Par
 type PendingTx = { data: ParsedTransaction; source: 'text' | 'screenshot' }
 
 export function Home() {
+  const navigate = useNavigate()
   const { adapter, cooldownHours } = useSettingsStore()
   const principlesStore = usePrinciplesStore()
   const budgetStore     = useBudgetStore()
@@ -86,6 +88,18 @@ export function Home() {
         case 'principles': {
           const items = result.data.items
           if (Array.isArray(items) && items.length > 0) await principlesStore.add(items as string[])
+          break
+        }
+        case 'execution': {
+          // Jump to the execution layer. If the AI parsed a product, prefill the setup form;
+          // otherwise just open the page with an empty setup form (no error).
+          const d = result.data as { category?: string; item_name?: string; estimated_price?: number | null }
+          const prefillCategory = (d.category || d.item_name || '').trim()
+          navigate('/execution', {
+            state: prefillCategory
+              ? { prefill: { category: prefillCategory, estimatedPrice: d.estimated_price ?? null } }
+              : undefined,
+          })
           break
         }
       }

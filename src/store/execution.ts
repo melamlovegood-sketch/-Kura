@@ -25,6 +25,9 @@ interface ExecutionStore {
   brandsForCategory: (category: string) => BrandEntry[]
   addBrand: (category: string, brandName: string, note?: string) => Promise<void>
   updateWeight: (id: string, delta: 1 | -1) => Promise<void>
+  addSOPRule: (title: string, content: string) => Promise<void>
+  updateSOPRule: (id: string, patch: { title?: string; content?: string }) => Promise<void>
+  deleteSOPRule: (id: string) => Promise<void>
   createSession: (category: string, timerDuration: number) => Promise<string>
   endSession: (
     id: string,
@@ -76,6 +79,28 @@ export const useExecutionStore = create<ExecutionStore>()(persist((set, get) => 
       .update({ weight: newWeight, updated_at: new Date().toISOString() })
       .eq('id', id)
     set({ brands: get().brands.map((b) => (b.id === id ? { ...b, weight: newWeight } : b)) })
+  },
+
+  addSOPRule: async (title, content) => {
+    const rules = get().sopRules
+    const nextOrder = rules.length ? Math.max(...rules.map((r) => r.order)) + 1 : 1
+    const { data } = await supabase
+      .from('sop_rules')
+      .insert({ title, content: content || title, order: nextOrder })
+      .select()
+      .single()
+
+    if (data) set({ sopRules: [...rules, data as SOPRule].sort((a, b) => a.order - b.order) })
+  },
+
+  updateSOPRule: async (id, patch) => {
+    await supabase.from('sop_rules').update(patch).eq('id', id)
+    set({ sopRules: get().sopRules.map((r) => (r.id === id ? { ...r, ...patch } : r)) })
+  },
+
+  deleteSOPRule: async (id) => {
+    await supabase.from('sop_rules').delete().eq('id', id)
+    set({ sopRules: get().sopRules.filter((r) => r.id !== id) })
   },
 
   createSession: async (category, timerDuration) => {

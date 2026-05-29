@@ -1,9 +1,9 @@
 import { useEffect, useRef, useState } from 'react'
 import { useNavigate, useLocation } from 'react-router-dom'
-import { ChevronDown, ChevronRight, Plus } from 'lucide-react'
+import { ChevronDown, ChevronRight, Pencil, Plus, X } from 'lucide-react'
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card'
 import { Button } from '@/components/ui/button'
-import { useExecutionStore, type BrandEntry } from '@/store/execution'
+import { useExecutionStore, type BrandEntry, type SOPRule } from '@/store/execution'
 import { useReviewStore } from '@/store/review'
 import { useSettingsStore } from '@/store/settings'
 import { addExecutionTransaction } from '@/store/transactions'
@@ -98,7 +98,7 @@ function SetupPhase({ execStore, onStart, initialCategory = '', durationSeconds,
         </CardContent>
       </Card>
       {category.trim() && <BrandSection category={category.trim()} brands={categoryBrands} execStore={execStore} />}
-      <SOPSection rules={execStore.sopRules} defaultOpen />
+      <SOPSection execStore={execStore} defaultOpen />
     </>
   )
 }
@@ -118,7 +118,7 @@ function TimingPhase({ phase, execStore, onExpire, onEarlyDecide }: {
         </CardContent>
       </Card>
       {brands.length > 0 && <BrandSection category={phase.category} brands={brands} execStore={execStore} readonly />}
-      <SOPSection rules={execStore.sopRules} />
+      <SOPSection execStore={execStore} />
     </>
   )
 }
@@ -266,9 +266,13 @@ function BrandSection({ category, brands, execStore, readonly = false }: {
   )
 }
 
-function SOPSection({ rules, defaultOpen = false }: { rules: ReturnType<typeof useExecutionStore>['sopRules']; defaultOpen?: boolean }) {
-  const [open, setOpen] = useState(defaultOpen)
-  if (rules.length === 0) return null
+function SOPSection({ execStore, defaultOpen = false }: {
+  execStore: ReturnType<typeof useExecutionStore>; defaultOpen?: boolean
+}) {
+  const rules = execStore.sopRules
+  const [open, setOpen]           = useState(defaultOpen)
+  const [editingId, setEditingId] = useState<string | null>(null)
+  const [adding, setAdding]       = useState(false)
 
   return (
     <Card>
@@ -277,19 +281,69 @@ function SOPSection({ rules, defaultOpen = false }: { rules: ReturnType<typeof u
         {open ? <ChevronDown size={14} className="text-ink-4" /> : <ChevronRight size={14} className="text-ink-4" />}
       </button>
       {open && (
-        <ul className="mt-4 flex flex-col gap-2.5">
-          {rules.map((rule, i) => (
-            <li key={rule.id} className="flex gap-2.5 text-[15px]">
-              <span className="mt-0.5 shrink-0 text-[13px] text-ink-4">{i + 1}.</span>
-              <div>
-                <span className="font-medium text-ink-2">{rule.title}</span>
-                {rule.content !== rule.title && <span className="text-ink-3"> — {rule.content}</span>}
-              </div>
-            </li>
-          ))}
-        </ul>
+        <div className="mt-4 flex flex-col gap-2.5">
+          {rules.length === 0 && !adding && <p className="text-[13px] text-ink-4">还没有购物原则</p>}
+
+          <ul className="flex flex-col gap-2.5">
+            {rules.map((rule, i) =>
+              editingId === rule.id ? (
+                <SOPEditRow key={rule.id} rule={rule}
+                  onSave={async (patch) => { await execStore.updateSOPRule(rule.id, patch); setEditingId(null) }}
+                  onCancel={() => setEditingId(null)} />
+              ) : (
+                <li key={rule.id} className="flex items-start gap-2.5 text-[15px]">
+                  <span className="mt-0.5 shrink-0 text-[13px] text-ink-4">{i + 1}.</span>
+                  <div className="min-w-0 flex-1">
+                    <span className="font-medium text-ink-2">{rule.title}</span>
+                    {rule.content !== rule.title && <span className="text-ink-3"> — {rule.content}</span>}
+                  </div>
+                  <button onClick={() => setEditingId(rule.id)} className="mt-0.5 shrink-0 text-ink-4 hover:text-ink-3 transition-colors"><Pencil size={13} /></button>
+                  <button onClick={() => void execStore.deleteSOPRule(rule.id)} className="mt-0.5 shrink-0 text-ink-4 hover:text-ink-3 transition-colors"><X size={13} /></button>
+                </li>
+              ),
+            )}
+          </ul>
+
+          {adding ? (
+            <SOPEditRow rule={{ id: '', title: '', content: '', order: 0 }}
+              onSave={async (patch) => { await execStore.addSOPRule(patch.title, patch.content); setAdding(false) }}
+              onCancel={() => setAdding(false)} />
+          ) : (
+            <button onClick={() => setAdding(true)} className="flex items-center gap-1 text-[13px] text-ink-4 hover:text-ink-3 transition-colors">
+              <Plus size={13} /> 添加原则
+            </button>
+          )}
+        </div>
       )}
     </Card>
+  )
+}
+
+function SOPEditRow({ rule, onSave, onCancel }: {
+  rule: SOPRule; onSave: (patch: { title: string; content: string }) => Promise<void>; onCancel: () => void
+}) {
+  const [title, setTitle]     = useState(rule.title)
+  const [content, setContent] = useState(rule.content === rule.title ? '' : rule.content)
+  const [saving, setSaving]   = useState(false)
+
+  async function handleSave() {
+    if (!title.trim()) return
+    setSaving(true)
+    try { await onSave({ title: title.trim(), content: content.trim() || title.trim() }) }
+    finally { setSaving(false) }
+  }
+
+  return (
+    <li className="flex flex-col gap-2 rounded-lg border-theme bg-card-alt p-2.5">
+      <input type="text" value={title} onChange={(e) => setTitle(e.target.value)} placeholder="标题，如：裤子" autoFocus
+        className="w-full bg-transparent text-[15px] font-medium text-ink outline-none placeholder:text-ink-4" />
+      <textarea value={content} onChange={(e) => setContent(e.target.value)} placeholder="具体原则（可留空，留空则只显示标题）" rows={2}
+        className="w-full resize-none bg-transparent text-[14px] text-ink-2 outline-none placeholder:text-ink-4" />
+      <div className="flex justify-end gap-2">
+        <Button size="sm" variant="ghost" onClick={onCancel} disabled={saving}>取消</Button>
+        <Button size="sm" onClick={() => void handleSave()} disabled={saving || !title.trim()}>{saving ? '保存中…' : '保存'}</Button>
+      </div>
+    </li>
   )
 }
 

@@ -20,9 +20,14 @@ export const useBudgetStore = create<BudgetStore>()(persist((set) => ({
 
   refresh: async () => {
     set({ loading: true })
-    // v_current_budget filters to current month internally
-    const { data } = await supabase.from('v_current_budget').select('*').maybeSingle()
-    set({ data: (data as BudgetData | null) ?? null, loading: false })
+    try {
+      // v_current_budget filters to current month internally
+      const { data } = await supabase.from('v_current_budget').select('*').maybeSingle()
+      set({ data: (data as BudgetData | null) ?? null })
+    } finally {
+      // Always clear the spinner — otherwise a failed query leaves the card stuck on "加载中…"
+      set({ loading: false })
+    }
   },
 
   upsert: async ({ basic_life_limit, discretionary_limit, total_income }) => {

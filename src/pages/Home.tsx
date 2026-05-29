@@ -6,6 +6,7 @@ import { Card } from '@/components/ui/card'
 import { ImageDropZone } from '@/components/ui/image-drop-zone'
 import { BudgetCard } from '@/components/budget/BudgetCard'
 import { WishPoolCard } from '@/components/wishpool/WishPoolCard'
+import { WishPoolReachedCard } from '@/components/wishpool/WishPoolReachedCard'
 import { ConfirmTransactionCard } from '@/components/transaction/ConfirmTransactionCard'
 import { ImpulseExpiredCard } from '@/components/impulse/ImpulseExpiredCard'
 import { WishlistNudgeCard } from '@/components/wishlist/WishlistNudgeCard'
@@ -193,6 +194,7 @@ export function Home() {
 
       {!pendingTx && !pendingBudget && (
         <>
+          <WishPoolReachedCard />
           {expiredImpulse && <ImpulseExpiredCard record={expiredImpulse} onApprove={handleImpulseApprove} onDismiss={(id) => impulseStore.dismiss(id)} />}
           {!expiredImpulse && reviewStore.pendingTasks[0] && <ReviewCard task={reviewStore.pendingTasks[0]} />}
           {!expiredImpulse && !reviewStore.pendingTasks[0] && nudgeItem && (

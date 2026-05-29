@@ -8,7 +8,12 @@ interface WishPoolStore {
   loaded: boolean
   load: () => Promise<void>
   addSavings: (amount: number, description: string) => Promise<void>
+  /** Clear a goal-reached pool once the user acts on the buy guidance. */
+  dismissCompleted: () => void
 }
+
+const isReached = (p: WishPoolData | null): boolean =>
+  !!p && p.target_amount > 0 && p.saved_amount >= p.target_amount
 
 export const useWishPoolStore = create<WishPoolStore>()(persist((set, get) => ({
   pool: null,
@@ -20,8 +25,16 @@ export const useWishPoolStore = create<WishPoolStore>()(persist((set, get) => ({
       .select('*')
       .maybeSingle()
 
-    set({ pool: (data as WishPoolData | null) ?? null, loaded: true })
+    const active = (data as WishPoolData | null) ?? null
+    if (active) { set({ pool: active, loaded: true }); return }
+
+    // No active pool in the view. A just-reached pool gets completed_at set and
+    // is filtered out of v_active_wish_pool — keep it locally so the buy-guidance
+    // card survives reloads until the user acts on it (or dismisses it).
+    set({ pool: isReached(get().pool) ? get().pool : null, loaded: true })
   },
+
+  dismissCompleted: () => set({ pool: null }),
 
   addSavings: async (amount, description) => {
     const pool = get().pool

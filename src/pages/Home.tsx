@@ -162,7 +162,7 @@ export function Home() {
       <div className="h-4 md:h-[80px]" />
 
       {/* Dialog bar */}
-      <div className="fixed bottom-14 md:bottom-[60px] left-1/2 z-30 w-full max-w-[480px] md:max-w-[640px] -translate-x-1/2 border-t-theme bg-card md:bg-page px-6 py-3">
+      <div className="fixed bottom-14 md:bottom-15 inset-x-0 mx-auto z-30 w-full max-w-[480px] md:max-w-[640px] border-t-theme bg-card md:bg-page px-6 py-3">
         {image && (
           <div className="mb-2 flex items-center gap-2">
             <span className="max-w-[200px] truncate text-xs text-ink-4">{image.file.name}</span>

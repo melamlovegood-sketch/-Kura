@@ -1,0 +1,211 @@
+import { useEffect, useRef, useState } from 'react'
+import { ImagePlus, Send, X } from 'lucide-react'
+import { Button } from '@/components/ui/button'
+import { Card } from '@/components/ui/card'
+import { ImageDropZone } from '@/components/ui/image-drop-zone'
+import { BudgetCard } from '@/components/budget/BudgetCard'
+import { WishPoolCard } from '@/components/wishpool/WishPoolCard'
+import { ConfirmTransactionCard } from '@/components/transaction/ConfirmTransactionCard'
+import { ImpulseExpiredCard } from '@/components/impulse/ImpulseExpiredCard'
+import { WishlistNudgeCard } from '@/components/wishlist/WishlistNudgeCard'
+import { ReviewCard } from '@/components/review/ReviewCard'
+import { useSettingsStore } from '@/store/settings'
+import { usePrinciplesStore } from '@/store/principles'
+import { useBudgetStore } from '@/store/budget'
+import { useImpulseStore } from '@/store/impulse'
+import { useWishlistStore } from '@/store/wishlist'
+import { useWishPoolStore } from '@/store/wishpool'
+import { useReviewStore } from '@/store/review'
+import { addTransaction } from '@/store/transactions'
+import { routeIntent } from '@/lib/ai/router'
+import { fileToBase64, formatAmount } from '@/lib/utils'
+import type { IntentResult } from '@/lib/ai/types'
+import type { ParsedBudget, ParsedImpulse, ParsedSavings, ParsedTransaction, ParsedWishlistItem, WishlistItem } from '@/types/db'
+
+type PendingTx = { data: ParsedTransaction; source: 'text' | 'screenshot' }
+
+export function Home() {
+  const { adapter, cooldownHours } = useSettingsStore()
+  const principlesStore = usePrinciplesStore()
+  const budgetStore     = useBudgetStore()
+  const impulseStore    = useImpulseStore()
+  const wishlistStore   = useWishlistStore()
+  const wishPoolStore   = useWishPoolStore()
+  const reviewStore     = useReviewStore()
+
+  const [text, setText]   = useState('')
+  const [image, setImage] = useState<{ file: File; base64: string } | null>(null)
+  const [streaming, setStreaming]   = useState(false)
+  const [streamText, setStreamText] = useState('')
+  const [lastResult, setLastResult] = useState<IntentResult | null>(null)
+  const abortRef = useRef<AbortController | null>(null)
+  const fileRef  = useRef<HTMLInputElement>(null)
+
+  const [pendingTx,     setPendingTx]     = useState<PendingTx | null>(null)
+  const [pendingBudget, setPendingBudget] = useState<ParsedBudget | null>(null)
+
+  useEffect(() => { void budgetStore.refresh() }, []) // eslint-disable-line react-hooks/exhaustive-deps
+
+  async function handleSubmit() {
+    if (!text.trim() && !image) return
+    if (!adapter) { alert('请先在设置里填写 API Key'); return }
+
+    abortRef.current?.abort()
+    const ctrl   = new AbortController()
+    abortRef.current = ctrl
+    const source: 'text' | 'screenshot' = image ? 'screenshot' : 'text'
+
+    setStreaming(true); setStreamText(''); setLastResult(null)
+    setPendingTx(null); setPendingBudget(null)
+
+    try {
+      const principles = principlesStore.items.map((p) => p.content)
+      const result = await routeIntent(adapter, text.trim() || '（图片输入）', image?.base64, (d) => setStreamText((p) => p + d), ctrl.signal, principles)
+      setLastResult(result); setText(''); setImage(null)
+
+      switch (result.module) {
+        case 'transaction': {
+          const d = result.data as ParsedTransaction
+          if (d.amount > 0) setPendingTx({ data: d, source }); break
+        }
+        case 'budget':    setPendingBudget(result.data as ParsedBudget); break
+        case 'impulse':   await impulseStore.add(result.data as ParsedImpulse, cooldownHours); break
+        case 'wishlist':  await wishlistStore.add(result.data as ParsedWishlistItem); break
+        case 'wish_pool': {
+          const d = result.data as ParsedSavings
+          if (wishPoolStore.pool) await wishPoolStore.addSavings(d.amount, d.description)
+          break
+        }
+        case 'principles': {
+          const items = result.data.items
+          if (Array.isArray(items) && items.length > 0) await principlesStore.add(items as string[])
+          break
+        }
+      }
+    } catch (err) {
+      if ((err as Error).name !== 'AbortError') console.error(err)
+    } finally { setStreaming(false); setStreamText('') }
+  }
+
+  async function handleTxConfirm(tx: ParsedTransaction) {
+    await addTransaction(tx, pendingTx?.source ?? 'text')
+    setPendingTx(null); setLastResult(null); void budgetStore.refresh()
+  }
+
+  async function handleBudgetConfirm() {
+    if (!pendingBudget?.basic_life_limit || !pendingBudget.discretionary_limit) return
+    await budgetStore.upsert({ basic_life_limit: pendingBudget.basic_life_limit, discretionary_limit: pendingBudget.discretionary_limit })
+    setPendingBudget(null); setLastResult(null)
+  }
+
+  async function handleImpulseApprove(record: Parameters<typeof impulseStore.approve>[0]) {
+    await impulseStore.approve(record); await wishlistStore.load()
+  }
+
+  async function handleNudgeKeep(item: WishlistItem) { await wishlistStore.markNudged(item.id) }
+
+  function handleFileSelect(base64: string, file: File) { setImage({ file, base64 }) }
+
+  async function handleInputFileSelect(e: React.ChangeEvent<HTMLInputElement>) {
+    const file = e.target.files?.[0]; if (!file) return
+    handleFileSelect(await fileToBase64(file), file); e.target.value = ''
+  }
+
+  function handleKeyDown(e: React.KeyboardEvent) {
+    if (e.key === 'Enter' && !e.shiftKey) { e.preventDefault(); void handleSubmit() }
+  }
+
+  const expiredImpulse = impulseStore.items.find((r) => r.status === 'pending' && new Date(r.expires_at) <= new Date()) ?? null
+  const nudgeItem = !expiredImpulse
+    ? wishlistStore.items.find((i) => {
+        if (i.status !== 'active') return false
+        if (!i.last_nudged_at) return true
+        return (Date.now() - new Date(i.last_nudged_at).getTime()) / 86400000 >= 7
+      }) ?? null
+    : null
+
+  return (
+    <ImageDropZone onFile={handleFileSelect} className="flex min-h-full flex-col gap-3 px-6 pt-6">
+      <BudgetCard />
+      <WishPoolCard />
+
+      {streaming && (
+        <Card>
+          <p className="whitespace-pre-wrap text-sm leading-relaxed text-ink-3">
+            {streamText}<span className="ml-1 inline-block h-3 w-0.5 animate-pulse bg-ink-4" />
+          </p>
+        </Card>
+      )}
+
+      {pendingTx && (
+        <ConfirmTransactionCard initial={pendingTx.data} source={pendingTx.source} onConfirm={handleTxConfirm} onCancel={() => setPendingTx(null)} />
+      )}
+
+      {pendingBudget && !pendingTx && (
+        <BudgetConfirmCard data={pendingBudget} onConfirm={() => void handleBudgetConfirm()} onCancel={() => setPendingBudget(null)} />
+      )}
+
+      {!pendingTx && !pendingBudget && (
+        <>
+          {expiredImpulse && <ImpulseExpiredCard record={expiredImpulse} onApprove={handleImpulseApprove} onDismiss={(id) => impulseStore.dismiss(id)} />}
+          {!expiredImpulse && reviewStore.pendingTasks[0] && <ReviewCard task={reviewStore.pendingTasks[0]} />}
+          {!expiredImpulse && !reviewStore.pendingTasks[0] && nudgeItem && (
+            <WishlistNudgeCard item={nudgeItem} onKeep={handleNudgeKeep} onDismiss={(id) => wishlistStore.dismiss(id)} />
+          )}
+        </>
+      )}
+
+      {!streaming && !pendingTx && !pendingBudget && lastResult && lastResult.module === 'unknown' && (
+        <Card><p className="text-sm text-ink-3">{lastResult.display_text}</p></Card>
+      )}
+
+      <div className="h-4" />
+
+      {/* Dialog bar — same centering as AppLayout nav */}
+      <div className="fixed bottom-14 left-1/2 z-30 w-full max-w-[480px] -translate-x-1/2 border-t-theme bg-card px-6 py-3">
+        {image && (
+          <div className="mb-2 flex items-center gap-2">
+            <span className="max-w-[200px] truncate text-xs text-ink-4">{image.file.name}</span>
+            <button onClick={() => setImage(null)} className="text-ink-4 hover:text-ink-3 transition-colors"><X size={14} /></button>
+          </div>
+        )}
+        <div className="flex items-end gap-2">
+          <button onClick={() => fileRef.current?.click()} className="shrink-0 pb-2 text-ink-4 hover:text-ink-3 transition-colors">
+            <ImagePlus size={20} />
+          </button>
+          <input ref={fileRef} type="file" accept="image/*" className="hidden" onChange={handleInputFileSelect} />
+
+          <textarea
+            value={text}
+            onChange={(e) => setText(e.target.value)}
+            onKeyDown={handleKeyDown}
+            placeholder="说一句话，或拖拽截图到上方…"
+            rows={1}
+            className="flex-1 resize-none rounded-xl border-theme bg-card-alt px-3.5 py-2 text-sm text-ink placeholder:text-ink-4 focus:bg-card focus:outline-none focus:ring-1 focus:ring-[var(--border)] transition-colors"
+            style={{ maxHeight: 120 }}
+          />
+
+          <Button size="icon" onClick={() => void handleSubmit()} disabled={streaming || (!text.trim() && !image)} className="shrink-0">
+            <Send size={15} />
+          </Button>
+        </div>
+      </div>
+    </ImageDropZone>
+  )
+}
+
+function BudgetConfirmCard({ data, onConfirm, onCancel }: { data: ParsedBudget; onConfirm: () => void; onCancel: () => void }) {
+  return (
+    <Card>
+      <p className="mb-3 text-[10px] font-medium uppercase tracking-[0.14em] text-ink-4">预算确认</p>
+      <div className="flex flex-col gap-2 text-sm">
+        {data.basic_life_limit   != null && <div className="flex justify-between"><span className="text-ink-3">基础生活</span><span className="font-serif text-ink">{formatAmount(data.basic_life_limit)}</span></div>}
+        {data.discretionary_limit != null && <div className="flex justify-between"><span className="text-ink-3">可支配</span><span className="font-serif text-ink">{formatAmount(data.discretionary_limit)}</span></div>}
+      </div>
+      <div className="mt-4 flex justify-between border-t-theme pt-3">
+        <Button variant="ghost" size="sm" onClick={onCancel}>取消</Button>
+        <Button size="sm" onClick={onConfirm}>确认设置</Button>
+      </div>
+    </Card>
+  )
+}

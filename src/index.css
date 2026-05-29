@@ -1,0 +1,136 @@
+@import "tailwindcss";
+
+/* ─── Theme variables ─────────────────────────────────────────────────────── */
+
+[data-theme="warm"] {
+  --bg-page:          #F5F0E8;
+  --bg-card:          #FFFDF8;
+  --bg-card-alt:      #EDE6D8;
+  --border:           #D8D0C0;
+  --text-primary:     #3C3028;
+  --text-secondary:   #5C5448;
+  --text-muted:       #9C9080;
+  --text-placeholder: #B0A494;
+  --accent:           #5C5448;
+  --accent-fg:        #F5F0E8;
+  --progress:         #8C7E6E;
+  --progress-track:   #DDD5C5;
+}
+
+[data-theme="cool"] {
+  --bg-page:          #F0F2F5;
+  --bg-card:          #FAFBFC;
+  --bg-card-alt:      #E4E8EF;
+  --border:           #D0D4DA;
+  --text-primary:     #2C3340;
+  --text-secondary:   #4A5260;
+  --text-muted:       #8A96A8;
+  --text-placeholder: #A0AABB;
+  --accent:           #4A5260;
+  --accent-fg:        #F0F2F5;
+  --progress:         #6B7A90;
+  --progress-track:   #C8CDD6;
+}
+
+[data-theme="dark"] {
+  --bg-page:          #141414;
+  --bg-card:          #1E1E1E;
+  --bg-card-alt:      #252525;
+  --border:           #2E2E2E;
+  --text-primary:     #EDEDE8;
+  --text-secondary:   #A8A89E;
+  --text-muted:       #6A6A62;
+  --text-placeholder: #4A4A44;
+  --accent:           #EDEDE8;
+  --accent-fg:        #141414;
+  --progress:         #A8A89E;
+  --progress-track:   #2E2E2E;
+}
+
+/* ─── Tailwind v4 theme tokens ────────────────────────────────────────────── */
+
+@theme {
+  --font-sans:   'DM Sans', 'PingFang SC', -apple-system, sans-serif;
+  --font-serif:  'DM Serif Display', Georgia, serif;
+}
+
+/* ─── Semantic utility classes (auto-support hover: focus: etc.) ──────────── */
+
+/* Backgrounds */
+@utility bg-page      { background-color: var(--bg-page); }
+@utility bg-card      { background-color: var(--bg-card); }
+@utility bg-card-alt  { background-color: var(--bg-card-alt); }
+@utility bg-accent    { background-color: var(--accent); }
+@utility bg-progress  { background-color: var(--progress); }
+@utility bg-track     { background-color: var(--progress-track); }
+
+/* Text */
+@utility text-ink   { color: var(--text-primary); }
+@utility text-ink-2 { color: var(--text-secondary); }
+@utility text-ink-3 { color: var(--text-muted); }
+@utility text-ink-4 { color: var(--text-placeholder); }
+@utility text-on-accent { color: var(--accent-fg); }
+
+/* Borders — 0.5px solid var(--border) in one class */
+@utility border-theme   { border: 0.5px solid var(--border); }
+@utility border-t-theme { border-top: 0.5px solid var(--border); }
+@utility border-b-theme { border-bottom: 0.5px solid var(--border); }
+@utility border-l-theme { border-left: 0.5px solid var(--border); }
+/* divide-theme: apply border-t-theme to each item manually */
+
+/* ─── Base styles ─────────────────────────────────────────────────────────── */
+
+* {
+  box-sizing: border-box;
+  margin: 0;
+  padding: 0;
+}
+
+html,
+body,
+#root {
+  height: 100%;
+  background-color: var(--bg-page);
+  color: var(--text-primary);
+  font-family: 'DM Sans', 'PingFang SC', -apple-system, sans-serif;
+  -webkit-font-smoothing: antialiased;
+  -moz-osx-font-smoothing: grayscale;
+}
+
+body {
+  overscroll-behavior-y: none;
+}
+
+::-webkit-scrollbar {
+  display: none;
+}
+
+/* Remove number input spinners */
+input[type='number']::-webkit-inner-spin-button,
+input[type='number']::-webkit-outer-spin-button {
+  appearance: none;
+}
+input[type='number'] {
+  appearance: textfield;
+}
+
+input[type='date']::-webkit-calendar-picker-indicator {
+  opacity: 0.3;
+  cursor: pointer;
+  filter: invert(0.5);
+}
+
+/* ─── Suppress browser-extension floating overlays ───────────────────────── */
+/* Chrome translate pill */
+.lmt-post-fix__menu,
+.VIpgJd-ZVi9od-aZ2wEe-wOHMyf,
+.VIpgJd-ZVi9od-l4eHX-hSRGPd,
+.goog-te-banner-frame,
+#goog-gt-tt,
+.goog-te-balloon-frame { display: none !important; }
+
+/* Generic fixed/absolute overlays injected into body by extensions
+   (matches elements NOT inside #root). Only hides truly foreign nodes. */
+body > *:not(#root):not(script):not(style):not(link):not(meta):not(noscript) {
+  display: none !important;
+}

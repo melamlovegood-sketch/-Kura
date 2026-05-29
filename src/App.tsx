@@ -13,6 +13,7 @@ import { useWishlistStore } from '@/store/wishlist'
 import { useWishPoolStore } from '@/store/wishpool'
 import { useExecutionStore } from '@/store/execution'
 import { useReviewStore } from '@/store/review'
+import { useExpiryStore } from '@/store/expiry'
 
 export function App() {
   const [showSplash, setShowSplash] = useState(true)
@@ -25,6 +26,7 @@ export function App() {
   const loadExecution  = useExecutionStore((s) => s.load)
   const loadReview     = useReviewStore   ((s) => s.load)
   const loadRegret     = useReviewStore   ((s) => s.loadRegret)
+  const loadExpiry     = useExpiryStore   ((s) => s.load)
 
   useEffect(() => {
     void loadSettings()
@@ -35,7 +37,8 @@ export function App() {
     void loadExecution()
     void loadReview()
     void loadRegret()
-  }, [loadSettings, loadPrinciples, loadImpulse, loadWishlist, loadWishPool, loadExecution, loadReview, loadRegret])
+    void loadExpiry()
+  }, [loadSettings, loadPrinciples, loadImpulse, loadWishlist, loadWishPool, loadExecution, loadReview, loadRegret, loadExpiry])
 
   if (showSplash) {
     return <SplashScreen onDone={() => setShowSplash(false)} />

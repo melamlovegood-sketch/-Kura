@@ -5,6 +5,25 @@ import { CategoryPicker } from './CategoryPicker'
 import { getCategoryMain } from '@/lib/categories'
 import type { ItemCategory, ParsedTransaction } from '@/types/db'
 
+/** Add N months to a YYYY-MM-DD date, clamping the day to the target month. */
+function addMonths(isoDate: string, months: number): string {
+  const [y, m, d] = isoDate.split('-').map(Number)
+  const base = new Date(y, m - 1, d)
+  base.setMonth(base.getMonth() + months)
+  // setMonth overflow (e.g. Jan 31 + 1mo) rolls into the next month — clamp back.
+  if (base.getDate() !== d) base.setDate(0)
+  const yy = base.getFullYear()
+  const mm = String(base.getMonth() + 1).padStart(2, '0')
+  const dd = String(base.getDate()).padStart(2, '0')
+  return `${yy}-${mm}-${dd}`
+}
+
+const EXPIRY_PRESETS = [
+  { label: '3 个月', months: 3 },
+  { label: '6 个月', months: 6 },
+  { label: '1 年', months: 12 },
+]
+
 interface ConfirmTransactionCardProps {
   initial: ParsedTransaction
   source: 'text' | 'screenshot'
@@ -17,12 +36,14 @@ export function ConfirmTransactionCard({ initial, source, onConfirm, onCancel }:
   const [description, setDescription] = useState(initial.description)
   const [category,    setCategory]    = useState<ItemCategory>(initial.category)
   const [date,        setDate]        = useState(initial.date)
+  const [expiry,      setExpiry]      = useState<string>(initial.expiry_date ?? '')
+  const [showExpiry,  setShowExpiry]  = useState(!!initial.expiry_date)
   const [confirming,  setConfirming]  = useState(false)
 
   async function handleConfirm() {
     if (amount <= 0) return
     setConfirming(true)
-    try { await onConfirm({ amount, description, category, category_main: getCategoryMain(category), date }) }
+    try { await onConfirm({ amount, description, category, category_main: getCategoryMain(category), date, expiry_date: expiry || null }) }
     finally { setConfirming(false) }
   }
 
@@ -66,6 +87,48 @@ export function ConfirmTransactionCard({ initial, source, onConfirm, onCancel }:
           onChange={(e) => setDate(e.target.value)}
           className="w-fit bg-transparent text-[13px] text-ink-4 outline-none border-b-theme focus:border-b-[var(--text-muted)] transition-colors"
         />
+
+        {/* Optional shelf-life / expiry — perishables only (SPEC_PHASE2 §9). */}
+        {!showExpiry ? (
+          <button
+            type="button"
+            onClick={() => setShowExpiry(true)}
+            className="w-fit text-[13px] text-ink-4 hover:text-ink-3 transition-colors"
+          >
+            + 保质期（可选）
+          </button>
+        ) : (
+          <div className="flex flex-col gap-2">
+            <div className="flex items-center gap-2">
+              <span className="text-[13px] text-ink-3">保质期</span>
+              <input
+                type="date"
+                value={expiry}
+                onChange={(e) => setExpiry(e.target.value)}
+                className="bg-transparent text-[13px] text-ink-2 outline-none border-b-theme focus:border-b-[var(--text-muted)] transition-colors"
+              />
+              <button
+                type="button"
+                onClick={() => { setExpiry(''); setShowExpiry(false) }}
+                className="text-[13px] text-ink-4 hover:text-ink-3 transition-colors"
+              >
+                清除
+              </button>
+            </div>
+            <div className="flex flex-wrap gap-1.5">
+              {EXPIRY_PRESETS.map((p) => (
+                <button
+                  key={p.months}
+                  type="button"
+                  onClick={() => setExpiry(addMonths(date, p.months))}
+                  className="rounded-full border-theme px-2.5 py-0.5 text-[12px] text-ink-3 hover:text-ink-2 transition-colors"
+                >
+                  {p.label}
+                </button>
+              ))}
+            </div>
+          </div>
+        )}
 
         <div className="flex items-center justify-between border-t-theme pt-3">
           <Button variant="ghost" size="sm" onClick={onCancel} disabled={confirming}>取消</Button>

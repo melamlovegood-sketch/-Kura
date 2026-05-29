@@ -13,6 +13,7 @@ export async function addTransaction(
       category: tx.category,
       category_main: tx.category_main,
       description: tx.description || null,
+      expiry_date: tx.expiry_date || null,
       source,
     })
     .select('id')

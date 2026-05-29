@@ -19,6 +19,8 @@ export interface ParsedTransaction {
   category: ItemCategory
   category_main: CategoryMain
   date: string
+  /** Optional shelf-life / expiry date (YYYY-MM-DD) for perishables. */
+  expiry_date?: string | null
 }
 
 export interface ParsedBudget {

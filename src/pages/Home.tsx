@@ -13,6 +13,7 @@ import { ImpulseExpiredCard } from '@/components/impulse/ImpulseExpiredCard'
 import { WishlistNudgeCard } from '@/components/wishlist/WishlistNudgeCard'
 import { ReviewCard } from '@/components/review/ReviewCard'
 import { RegretBoardCard } from '@/components/review/RegretBoardCard'
+import { ExpiryReminderCard } from '@/components/transaction/ExpiryReminderCard'
 import { useSettingsStore } from '@/store/settings'
 import { usePrinciplesStore } from '@/store/principles'
 import { useBudgetStore } from '@/store/budget'
@@ -20,6 +21,7 @@ import { useImpulseStore } from '@/store/impulse'
 import { useWishlistStore } from '@/store/wishlist'
 import { useWishPoolStore } from '@/store/wishpool'
 import { useReviewStore } from '@/store/review'
+import { useExpiryStore } from '@/store/expiry'
 import { addTransaction } from '@/store/transactions'
 import { routeIntent } from '@/lib/ai/router'
 import { fileToBase64, formatAmount } from '@/lib/utils'
@@ -37,6 +39,7 @@ export function Home() {
   const wishlistStore   = useWishlistStore()
   const wishPoolStore   = useWishPoolStore()
   const reviewStore     = useReviewStore()
+  const expiryStore     = useExpiryStore()
 
   const [text, setText]   = useState('')
   const [image, setImage] = useState<{ file: File; base64: string } | null>(null)
@@ -126,6 +129,7 @@ export function Home() {
       const id = await addTransaction(tx, pendingTx?.source ?? 'text')
       console.debug('[handleTxConfirm] addTransaction ok', { id })
       setPendingTx(null); setLastResult(null); void budgetStore.refresh()
+      if (tx.expiry_date) void expiryStore.load()
     } catch (err) {
       // Previously this threw out of an un-awaited handler, so the card just
       // stayed put with no feedback. Surface the failure instead.
@@ -198,6 +202,7 @@ export function Home() {
       {!pendingTx && !pendingBudget && (
         <>
           <WishPoolReachedCard />
+          <ExpiryReminderCard />
           {expiredImpulse && <ImpulseExpiredCard record={expiredImpulse} onApprove={handleImpulseApprove} onDismiss={(id) => impulseStore.dismiss(id)} />}
           {!expiredImpulse && reviewStore.pendingTasks[0] && <ReviewCard task={reviewStore.pendingTasks[0]} />}
           {!expiredImpulse && !reviewStore.pendingTasks[0] && nudgeItem && (

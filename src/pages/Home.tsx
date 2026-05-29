@@ -57,6 +57,7 @@ export function Home() {
 
   const [pendingTx,     setPendingTx]     = useState<PendingTx | null>(null)
   const [pendingBudget, setPendingBudget] = useState<ParsedBudget | null>(null)
+  const [savingsPrompt, setSavingsPrompt] = useState<ParsedSavings | null>(null)
 
   useEffect(() => { void budgetStore.refresh() }, []) // eslint-disable-line react-hooks/exhaustive-deps
 
@@ -70,7 +71,7 @@ export function Home() {
     const source: 'text' | 'screenshot' = image ? 'screenshot' : 'text'
 
     setStreaming(true); setLastResult(null)
-    setPendingTx(null); setPendingBudget(null)
+    setPendingTx(null); setPendingBudget(null); setSavingsPrompt(null)
 
     try {
       const principles = principlesStore.items.map((p) => p.content)
@@ -105,7 +106,15 @@ export function Home() {
         }
         case 'wish_pool': {
           const d = result.data as ParsedSavings
-          if (wishPoolStore.pool) await wishPoolStore.addSavings(d.amount, d.description)
+          if (d.amount <= 0) break
+          if (wishPoolStore.pool) {
+            await wishPoolStore.addSavings(d.amount, d.description)
+          } else {
+            // No goal yet — stash it now (lossless) and ask the user to pick one.
+            // It'll auto-merge into the pool the next time one is loaded.
+            wishPoolStore.stashSavings(d.amount, d.description)
+            setSavingsPrompt(d)
+          }
           break
         }
         case 'principles': {
@@ -216,7 +225,15 @@ export function Home() {
         <BudgetConfirmCard data={pendingBudget} onConfirm={() => void handleBudgetConfirm()} onCancel={() => setPendingBudget(null)} />
       )}
 
-      {!pendingTx && !pendingBudget && (
+      {savingsPrompt && !pendingTx && !pendingBudget && (
+        <SavingsNoPoolCard
+          data={savingsPrompt}
+          onPick={() => { setSavingsPrompt(null); navigate('/wishlist') }}
+          onKeep={() => setSavingsPrompt(null)}
+        />
+      )}
+
+      {!pendingTx && !pendingBudget && !savingsPrompt && (
         <>
           <DuplicateWarningCard />
           <WishPoolReachedCard />
@@ -270,6 +287,25 @@ export function Home() {
         </div>
       </div>
     </ImageDropZone>
+  )
+}
+
+function SavingsNoPoolCard({ data, onPick, onKeep }: { data: ParsedSavings; onPick: () => void; onKeep: () => void }) {
+  return (
+    <Card>
+      <p className="mb-1 text-[11px] font-medium uppercase tracking-[0.14em] text-ink-4">忍住了</p>
+      <p className="text-[15px] leading-relaxed text-ink-2">
+        已先记下 <span className="font-serif text-[17px] text-ink">{formatAmount(data.amount)}</span>
+        {data.description && <span className="text-ink-3"> · {data.description}</span>}。
+      </p>
+      <p className="mt-1.5 text-[13px] leading-relaxed text-ink-4">
+        你还没有许愿池目标，要先选一个吗？选定后这笔会自动累积进去。
+      </p>
+      <div className="mt-4 flex justify-between border-t-theme pt-3">
+        <Button variant="ghost" size="sm" onClick={onKeep}>先记下来</Button>
+        <Button size="sm" onClick={onPick}>去选目标</Button>
+      </div>
+    </Card>
   )
 }
 

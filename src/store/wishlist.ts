@@ -10,6 +10,8 @@ interface WishlistStore {
   add: (data: ParsedWishlistItem, impulseRecordId?: string) => Promise<WishlistItem | null>
   /** Set this item as the wish pool focus, create/reuse wish_pool record */
   pin: (item: WishlistItem) => Promise<void>
+  /** Move an item up/down the list; renumbers `priority` to reflect display order. */
+  move: (id: string, dir: 'up' | 'down') => Promise<void>
   dismiss: (id: string) => Promise<void>
   /** Update last_nudged_at (user responded to "还想要吗") */
   markNudged: (id: string) => Promise<void>
@@ -87,6 +89,33 @@ export const useWishlistStore = create<WishlistStore>()(persist((set, get) => ({
     set({
       items: get().items.map((i) => ({ ...i, is_focus: i.id === item.id })),
     })
+  },
+
+  move: async (id, dir) => {
+    const items = [...get().items]
+    const idx = items.findIndex((i) => i.id === id)
+    if (idx < 0) return
+    const target = dir === 'up' ? idx - 1 : idx + 1
+    if (target < 0 || target >= items.length) return
+
+    // Swap the two neighbours in display order…
+    ;[items[idx], items[target]] = [items[target], items[idx]]
+
+    // …then renumber every row so `priority` strictly mirrors the list (top =
+    // highest). load() orders by priority desc, so this survives reloads. Only
+    // persist rows whose priority actually changed.
+    const n = items.length
+    const updates: { id: string; priority: number }[] = []
+    const renumbered = items.map((it, i) => {
+      const priority = n - i
+      if (it.priority !== priority) updates.push({ id: it.id, priority })
+      return { ...it, priority }
+    })
+
+    set({ items: renumbered })
+    await Promise.all(
+      updates.map((u) => supabase.from('wishlist_items').update({ priority: u.priority }).eq('id', u.id)),
+    )
   },
 
   dismiss: async (id) => {

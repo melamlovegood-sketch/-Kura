@@ -163,9 +163,16 @@ function RecordingPhase({ phase, execStore, reviewStore, onDone }: {
     if (amount <= 0) return; setSaving(true)
     try {
       const name = itemName.trim() || phase.category
+      const brandName = brand.trim()
       await execStore.endSession(phase.sessionId, 'bought', name)
+      // A hand-typed brand that isn't in the library yet must be added now (weight
+      // 5, same as manual adds), otherwise day7/day30 review can't feed weight back.
+      if (brandName) {
+        const known = brands.some((b) => b.brand_name.toLowerCase() === brandName.toLowerCase())
+        if (!known) await execStore.addBrand(phase.category, brandName)
+      }
       const txId = await addExecutionTransaction({ amount, description: name, executionCategory: phase.category, executionSessionId: phase.sessionId })
-      await reviewStore.createTasksForPurchase({ item_name: name, brand: brand.trim() || undefined, category: phase.category, transactionId: txId })
+      await reviewStore.createTasksForPurchase({ item_name: name, brand: brandName || undefined, category: phase.category, transactionId: txId })
       await onDone()
     } finally { setSaving(false) }
   }

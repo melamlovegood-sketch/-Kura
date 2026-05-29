@@ -7,6 +7,12 @@ import type { WishPoolData } from '@/types/db'
 const MILESTONES = [25, 50, 75, 100] as const
 export type Milestone = (typeof MILESTONES)[number]
 
+/** A "忍住了" record made while no wish pool existed, kept until a goal is pinned. */
+export interface PendingSaving {
+  amount: number
+  description: string
+}
+
 interface WishPoolStore {
   pool: WishPoolData | null
   loaded: boolean
@@ -14,8 +20,12 @@ interface WishPoolStore {
   milestone: Milestone | null
   /** Milestones already celebrated, keyed by pool id (survives reloads). */
   celebrated: Record<string, number[]>
+  /** "忍住了" amounts stashed before a goal existed; flushed into the pool on load. */
+  pendingSavings: PendingSaving[]
   load: () => Promise<void>
   addSavings: (amount: number, description: string) => Promise<void>
+  /** Stash a savings record locally when there is no active pool yet. */
+  stashSavings: (amount: number, description: string) => void
   /** Clear the active celebration once its animation has played. */
   clearMilestone: () => void
   /** Clear a goal-reached pool once the user acts on the buy guidance. */
@@ -33,6 +43,7 @@ export const useWishPoolStore = create<WishPoolStore>()(persist((set, get) => ({
   loaded: false,
   milestone: null,
   celebrated: {},
+  pendingSavings: [],
 
   clearMilestone: () => set({ milestone: null }),
 
@@ -42,7 +53,24 @@ export const useWishPoolStore = create<WishPoolStore>()(persist((set, get) => ({
       .select('*')
       .maybeSingle()
 
-    const active = (data as WishPoolData | null) ?? null
+    let active = (data as WishPoolData | null) ?? null
+
+    // A goal now exists → flush any "忍住了" amounts stashed while there was none.
+    if (active && get().pendingSavings.length > 0) {
+      const pending = get().pendingSavings
+      await supabase.from('savings_records').insert(
+        pending.map((p) => ({ wish_pool_id: active!.id, amount: p.amount, description: p.description || null })),
+      )
+      const { data: refreshed } = await supabase.from('v_active_wish_pool').select('*').maybeSingle()
+      active = (refreshed as WishPoolData | null) ?? active
+
+      // Flushing may have hit the target — mark it completed, same as addSavings.
+      if (active && active.saved_amount >= active.target_amount && !active.completed_at) {
+        await supabase.from('wish_pools').update({ completed_at: new Date().toISOString() }).eq('id', active.id)
+      }
+      set({ pendingSavings: [] })
+    }
+
     if (active) { set({ pool: active, loaded: true }); return }
 
     // No active pool in the view. A just-reached pool gets completed_at set and
@@ -50,6 +78,9 @@ export const useWishPoolStore = create<WishPoolStore>()(persist((set, get) => ({
     // card survives reloads until the user acts on it (or dismisses it).
     set({ pool: isReached(get().pool) ? get().pool : null, loaded: true })
   },
+
+  stashSavings: (amount, description) =>
+    set((s) => ({ pendingSavings: [...s.pendingSavings, { amount, description }] })),
 
   dismissCompleted: () => set({ pool: null }),
 
@@ -97,5 +128,5 @@ export const useWishPoolStore = create<WishPoolStore>()(persist((set, get) => ({
 }), {
   name: 'kura-wishpool',
   storage: createJSONStorage(() => localStorage),
-  partialize: (s) => ({ pool: s.pool, celebrated: s.celebrated }),
+  partialize: (s) => ({ pool: s.pool, celebrated: s.celebrated, pendingSavings: s.pendingSavings }),
 }))

@@ -1,5 +1,5 @@
 import { useState } from 'react'
-import { Pin, X, Clock } from 'lucide-react'
+import { Pin, X, Clock, ChevronUp, ChevronDown } from 'lucide-react'
 import { Card, CardContent } from '@/components/ui/card'
 import { useWishlistStore } from '@/store/wishlist'
 import { useImpulseStore } from '@/store/impulse'
@@ -34,11 +34,15 @@ export function Wishlist() {
         {activeItems.length === 0 ? (
           <Card className="py-6 text-center text-[13px] text-ink-4">还没有待购商品 — 通过对话框添加，或从冷静期通过</Card>
         ) : (
-          activeItems.map((item) => (
+          activeItems.map((item, i) => (
             <WishlistItemCard
               key={item.id}
               item={item}
               isPoolFocus={wishPoolStore.pool?.focus_item_id === item.id}
+              isFirst={i === 0}
+              isLast={i === activeItems.length - 1}
+              onMoveUp={() => wishlistStore.move(item.id, 'up')}
+              onMoveDown={() => wishlistStore.move(item.id, 'down')}
               onPin={async () => { await wishlistStore.pin(item); await wishPoolStore.load() }}
               onDismiss={() => wishlistStore.dismiss(item.id)}
             />
@@ -60,8 +64,9 @@ export function Wishlist() {
   )
 }
 
-function WishlistItemCard({ item, isPoolFocus, onPin, onDismiss }: {
-  item: WishlistItem; isPoolFocus: boolean; onPin: () => Promise<void>; onDismiss: () => void
+function WishlistItemCard({ item, isPoolFocus, isFirst, isLast, onMoveUp, onMoveDown, onPin, onDismiss }: {
+  item: WishlistItem; isPoolFocus: boolean; isFirst: boolean; isLast: boolean
+  onMoveUp: () => void; onMoveDown: () => void; onPin: () => Promise<void>; onDismiss: () => void
 }) {
   const [pinning, setPinning] = useState(false)
   const [showWorth, setShowWorth] = useState(false)
@@ -91,7 +96,25 @@ function WishlistItemCard({ item, isPoolFocus, onPin, onDismiss }: {
             )}
             <CostLabels amount={item.estimated_price} />
           </div>
-          <div className="flex shrink-0 gap-1">
+          <div className="flex shrink-0 items-start gap-1">
+            <div className="flex flex-col">
+              <button
+                onClick={onMoveUp}
+                disabled={isFirst}
+                className="rounded-lg p-1 text-ink-4 transition-colors hover:bg-card-alt hover:text-ink-2 disabled:opacity-30 disabled:hover:bg-transparent"
+                aria-label="上移"
+              >
+                <ChevronUp size={14} />
+              </button>
+              <button
+                onClick={onMoveDown}
+                disabled={isLast}
+                className="rounded-lg p-1 text-ink-4 transition-colors hover:bg-card-alt hover:text-ink-2 disabled:opacity-30 disabled:hover:bg-transparent"
+                aria-label="下移"
+              >
+                <ChevronDown size={14} />
+              </button>
+            </div>
             <button
               onClick={() => void handlePin()}
               disabled={pinning || isPoolFocus}

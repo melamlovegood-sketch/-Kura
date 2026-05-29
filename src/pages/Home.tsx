@@ -12,6 +12,7 @@ import { ConfirmTransactionCard } from '@/components/transaction/ConfirmTransact
 import { ImpulseExpiredCard } from '@/components/impulse/ImpulseExpiredCard'
 import { WishlistNudgeCard } from '@/components/wishlist/WishlistNudgeCard'
 import { ReviewCard } from '@/components/review/ReviewCard'
+import { RegretBoardCard } from '@/components/review/RegretBoardCard'
 import { useSettingsStore } from '@/store/settings'
 import { usePrinciplesStore } from '@/store/principles'
 import { useBudgetStore } from '@/store/budget'
@@ -202,6 +203,7 @@ export function Home() {
           {!expiredImpulse && !reviewStore.pendingTasks[0] && nudgeItem && (
             <WishlistNudgeCard item={nudgeItem} onKeep={handleNudgeKeep} onDismiss={(id) => wishlistStore.dismiss(id)} />
           )}
+          <RegretBoardCard />
         </>
       )}
 

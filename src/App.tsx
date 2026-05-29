@@ -24,6 +24,7 @@ export function App() {
   const loadWishPool   = useWishPoolStore ((s) => s.load)
   const loadExecution  = useExecutionStore((s) => s.load)
   const loadReview     = useReviewStore   ((s) => s.load)
+  const loadRegret     = useReviewStore   ((s) => s.loadRegret)
 
   useEffect(() => {
     void loadSettings()
@@ -33,7 +34,8 @@ export function App() {
     void loadWishPool()
     void loadExecution()
     void loadReview()
-  }, [loadSettings, loadPrinciples, loadImpulse, loadWishlist, loadWishPool, loadExecution, loadReview])
+    void loadRegret()
+  }, [loadSettings, loadPrinciples, loadImpulse, loadWishlist, loadWishPool, loadExecution, loadReview, loadRegret])
 
   if (showSplash) {
     return <SplashScreen onDone={() => setShowSplash(false)} />

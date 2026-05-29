@@ -17,6 +17,7 @@ import { PersonaCard } from '@/components/review/PersonaCard'
 import { ExpiryReminderCard } from '@/components/transaction/ExpiryReminderCard'
 import { SubscriptionReminderCard } from '@/components/subscription/SubscriptionReminderCard'
 import { useSettingsStore } from '@/store/settings'
+import { API_SKIPPED_KEY } from '@/components/onboarding/Onboarding'
 import { usePrinciplesStore } from '@/store/principles'
 import { useBudgetStore } from '@/store/budget'
 import { useImpulseStore } from '@/store/impulse'
@@ -205,6 +206,7 @@ export function Home() {
   return (
     <ImageDropZone onFile={handleFileSelect} className="flex min-h-full flex-col gap-3 pt-6 w-full max-w-[640px] mx-auto px-6">
       <MilestoneAnimation />
+      <NoApiKeyBanner />
       <BudgetCard />
       <WishPoolCard />
 
@@ -287,6 +289,27 @@ export function Home() {
         </div>
       </div>
     </ImageDropZone>
+  )
+}
+
+/**
+ * Persistent banner shown when the user skipped the API Key step in onboarding.
+ * Disappears automatically once an API key is configured (adapter becomes non-null).
+ */
+function NoApiKeyBanner() {
+  const adapter = useSettingsStore((s) => s.adapter)
+  const navigate = useNavigate()
+
+  const skipped = localStorage.getItem(API_SKIPPED_KEY) === 'true'
+  if (!skipped || adapter) return null
+
+  return (
+    <button
+      onClick={() => navigate('/settings')}
+      className="w-full rounded-[10px] bg-amber-50 border border-amber-200 px-4 py-2.5 text-left text-[13px] text-amber-800 transition-colors hover:bg-amber-100"
+    >
+      AI 功能未启用，去设置填入 API Key →
+    </button>
   )
 }
 

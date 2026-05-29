@@ -7,6 +7,7 @@ import { ImageDropZone } from '@/components/ui/image-drop-zone'
 import { BudgetCard } from '@/components/budget/BudgetCard'
 import { WishPoolCard } from '@/components/wishpool/WishPoolCard'
 import { WishPoolReachedCard } from '@/components/wishpool/WishPoolReachedCard'
+import { MilestoneAnimation } from '@/components/wishpool/MilestoneAnimation'
 import { ConfirmTransactionCard } from '@/components/transaction/ConfirmTransactionCard'
 import { ImpulseExpiredCard } from '@/components/impulse/ImpulseExpiredCard'
 import { WishlistNudgeCard } from '@/components/wishlist/WishlistNudgeCard'
@@ -172,6 +173,7 @@ export function Home() {
 
   return (
     <ImageDropZone onFile={handleFileSelect} className="flex min-h-full flex-col gap-3 pt-6 w-full max-w-[640px] mx-auto px-6">
+      <MilestoneAnimation />
       <BudgetCard />
       <WishPoolCard />
 

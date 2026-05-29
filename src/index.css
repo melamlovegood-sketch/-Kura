@@ -201,6 +201,54 @@ input[type='date']::-webkit-calendar-picker-indicator {
   animation: splash-fade-in 0.35s ease-out 2.0s both;
 }
 
+/* ─── Wish-pool milestone celebration ────────────────────────────────────── */
+
+@keyframes milestone-backdrop-in {
+  from { opacity: 0; }
+  to   { opacity: 1; }
+}
+
+@keyframes milestone-pop-in {
+  0%   { opacity: 0; transform: scale(0.8) translateY(12px); }
+  60%  { opacity: 1; transform: scale(1.03) translateY(-2px); }
+  100% { opacity: 1; transform: scale(1) translateY(0); }
+}
+
+/* 25% — happy little hops */
+@keyframes milestone-sq-jump {
+  0%, 100% { transform: translateY(0); }
+  25%      { transform: translateY(-16px); }
+  45%      { transform: translateY(0); }
+  62%      { transform: translateY(-8px); }
+  80%      { transform: translateY(0); }
+}
+
+/* 50% — scurries side to side */
+@keyframes milestone-sq-run {
+  0%   { transform: translateX(-12px) rotate(-4deg); }
+  50%  { transform: translateX(12px)  rotate(4deg); }
+  100% { transform: translateX(-12px) rotate(-4deg); }
+}
+
+/* 75% — leans down to tuck the acorn away */
+@keyframes milestone-sq-place {
+  0%, 100% { transform: translateY(0) rotate(0deg); }
+  50%      { transform: translateY(7px) rotate(9deg); }
+}
+
+/* 100% — celebratory spin */
+@keyframes milestone-sq-spin {
+  0%   { transform: rotate(0deg) scale(1); }
+  50%  { transform: rotate(180deg) scale(1.06); }
+  100% { transform: rotate(360deg) scale(1); }
+}
+
+@keyframes milestone-confetti-fall {
+  0%   { opacity: 0; transform: translateY(-20px) rotate(0deg); }
+  10%  { opacity: 1; }
+  100% { opacity: 0; transform: translateY(220px) rotate(340deg); }
+}
+
 /* ─── Suppress browser-extension floating overlays ───────────────────────── */
 /* Chrome translate pill */
 .lmt-post-fix__menu,

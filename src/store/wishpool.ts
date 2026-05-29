@@ -3,11 +3,21 @@ import { persist, createJSONStorage } from 'zustand/middleware'
 import { supabase } from '@/lib/supabase'
 import type { WishPoolData } from '@/types/db'
 
+/** Progress milestones (in %) that trigger the squirrel celebration. */
+const MILESTONES = [25, 50, 75, 100] as const
+export type Milestone = (typeof MILESTONES)[number]
+
 interface WishPoolStore {
   pool: WishPoolData | null
   loaded: boolean
+  /** Set when addSavings crosses a new milestone — drives MilestoneAnimation. */
+  milestone: Milestone | null
+  /** Milestones already celebrated, keyed by pool id (survives reloads). */
+  celebrated: Record<string, number[]>
   load: () => Promise<void>
   addSavings: (amount: number, description: string) => Promise<void>
+  /** Clear the active celebration once its animation has played. */
+  clearMilestone: () => void
   /** Clear a goal-reached pool once the user acts on the buy guidance. */
   dismissCompleted: () => void
 }
@@ -15,9 +25,16 @@ interface WishPoolStore {
 const isReached = (p: WishPoolData | null): boolean =>
   !!p && p.target_amount > 0 && p.saved_amount >= p.target_amount
 
+const pctOf = (p: WishPoolData): number =>
+  p.target_amount > 0 ? (p.saved_amount / p.target_amount) * 100 : 0
+
 export const useWishPoolStore = create<WishPoolStore>()(persist((set, get) => ({
   pool: null,
   loaded: false,
+  milestone: null,
+  celebrated: {},
+
+  clearMilestone: () => set({ milestone: null }),
 
   load: async () => {
     const { data } = await supabase
@@ -61,10 +78,24 @@ export const useWishPoolStore = create<WishPoolStore>()(persist((set, get) => ({
         .eq('id', pool.id)
     }
 
-    set({ pool: updated })
+    // Detect newly-crossed milestones. Each only fires once per pool (tracked in
+    // `celebrated`, which is persisted), so a reload or a big jump won't re-trigger.
+    let milestone = get().milestone
+    let celebrated = get().celebrated
+    if (updated) {
+      const newPct = pctOf(updated)
+      const done = celebrated[updated.id] ?? []
+      const crossed = MILESTONES.filter((m) => newPct >= m && !done.includes(m))
+      if (crossed.length > 0) {
+        milestone = Math.max(...crossed) as Milestone
+        celebrated = { ...celebrated, [updated.id]: [...done, ...crossed] }
+      }
+    }
+
+    set({ pool: updated, milestone, celebrated })
   },
 }), {
   name: 'kura-wishpool',
   storage: createJSONStorage(() => localStorage),
-  partialize: (s) => ({ pool: s.pool }),
+  partialize: (s) => ({ pool: s.pool, celebrated: s.celebrated }),
 }))

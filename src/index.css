@@ -249,6 +249,18 @@ input[type='date']::-webkit-calendar-picker-indicator {
   100% { opacity: 0; transform: translateY(220px) rotate(340deg); }
 }
 
+/* ─── Bottom sheet (BuyDrawer) ───────────────────────────────────────────── */
+
+@keyframes sheet-backdrop-in {
+  from { opacity: 0; }
+  to   { opacity: 1; }
+}
+
+@keyframes sheet-slide-up {
+  from { transform: translateY(100%); }
+  to   { transform: translateY(0); }
+}
+
 /* ─── Suppress browser-extension floating overlays ───────────────────────── */
 /* Chrome translate pill */
 .lmt-post-fix__menu,

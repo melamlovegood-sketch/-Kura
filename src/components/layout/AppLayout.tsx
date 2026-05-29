@@ -37,15 +37,15 @@ export function AppLayout({ children }: { children: ReactNode }) {
       <div className="hidden md:block h-[52px] shrink-0" />
 
       {/* ── Main content ──────────────────────────────────────── */}
-      <main className="flex-1 overflow-y-auto bg-page flex justify-center">
-        <div className="w-full max-w-[480px] md:max-w-[640px] md:pt-9 pb-20 md:pb-36">
+      <main className="flex-1 overflow-y-auto bg-page">
+        <div className="w-full max-w-[640px] mx-auto px-6 md:pt-9 pb-20 md:pb-36">
           {children}
         </div>
       </main>
 
       {/* ── Mobile bottom nav (<md) ───────────────────────────── */}
       <nav className="fixed bottom-0 left-0 right-0 z-40 border-t-theme bg-card md:hidden">
-        <div className="flex max-w-[480px] mx-auto">
+        <div className="flex max-w-[640px] mx-auto">
           {NAV_ITEMS.map(({ to, Icon, label }) => (
             <BottomNavItem
               key={to}

@@ -26,7 +26,7 @@ export function Execution() {
   const [phase, setPhase] = useState<Phase>({ name: 'setup' })
 
   return (
-    <div className="flex flex-col gap-4 px-6 pt-6 pb-10">
+    <div className="flex flex-col gap-4 pt-6">
       <h1 className="text-base font-medium text-ink">执行层</h1>
 
       {phase.name === 'setup' && (

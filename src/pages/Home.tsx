@@ -125,7 +125,7 @@ export function Home() {
     : null
 
   return (
-    <ImageDropZone onFile={handleFileSelect} className="flex min-h-full flex-col gap-3 px-6 pt-6">
+    <ImageDropZone onFile={handleFileSelect} className="flex min-h-full flex-col gap-3 pt-6">
       <BudgetCard />
       <WishPoolCard />
 
@@ -163,7 +163,7 @@ export function Home() {
 
       {/* Dialog bar — full-width outer, centered inner */}
       <div className="fixed bottom-14 md:bottom-[68px] left-0 right-0 z-30 border-t-theme bg-card md:bg-page">
-        <div className="mx-auto w-full max-w-[480px] md:max-w-[640px] px-6 py-3">
+        <div className="mx-auto w-full max-w-[640px] px-6 py-3">
           {image && (
             <div className="mb-2 flex items-center gap-2">
               <span className="max-w-[200px] truncate text-[13px] text-ink-4">{image.file.name}</span>

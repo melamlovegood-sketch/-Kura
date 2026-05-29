@@ -37,8 +37,8 @@ export function AppLayout({ children }: { children: ReactNode }) {
       <div className="hidden md:block h-[52px] shrink-0" />
 
       {/* ── Main content ──────────────────────────────────────── */}
-      <main className="flex-1 overflow-y-auto bg-page pb-20 md:pb-[60px] flex justify-center">
-        <div className="w-full max-w-[480px] md:max-w-[640px] md:pt-9">
+      <main className="flex-1 overflow-y-auto bg-page flex justify-center">
+        <div className="w-full max-w-[480px] md:max-w-[640px] md:pt-9 pb-20 md:pb-36">
           {children}
         </div>
       </main>
@@ -102,7 +102,7 @@ function BottomNavItem({ to, icon, label, active }: {
     <Link
       to={to}
       className={cn(
-        'flex flex-1 flex-col items-center gap-1 py-3 text-[11px] font-medium tracking-wide transition-colors',
+        'flex flex-1 flex-col items-center gap-1 py-3 text-[12px] font-medium tracking-wide transition-colors',
         active ? 'text-ink' : 'text-ink-4 hover:text-ink-3',
       )}
     >

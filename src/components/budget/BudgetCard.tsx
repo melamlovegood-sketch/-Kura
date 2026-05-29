@@ -13,7 +13,7 @@ export function BudgetCard() {
   if (loading && !data) {
     return (
       <Card><CardHeader><CardTitle>本月预算</CardTitle></CardHeader>
-        <CardContent><p className="text-xs text-ink-4">加载中…</p></CardContent>
+        <CardContent><p className="text-[13px] text-ink-4">加载中…</p></CardContent>
       </Card>
     )
   }
@@ -30,7 +30,7 @@ export function BudgetCard() {
             />
           ) : (
             <div className="flex items-center justify-between">
-              <p className="text-sm text-ink-3">未设置本月预算</p>
+              <p className="text-[15px] text-ink-3">未设置本月预算</p>
               <Button variant="outline" size="sm" onClick={() => setSetupOpen(true)}>设置预算</Button>
             </div>
           )}
@@ -76,10 +76,12 @@ function BudgetRow({ label, used, limit }: { label: string; used: number; limit:
   return (
     <div className="flex flex-col gap-2">
       <div className="flex justify-between items-baseline">
-        <span className="text-sm text-ink-3">{label}</span>
-        <span className={cn('text-sm', over ? 'text-red-500' : warn ? 'text-amber-600' : 'text-ink')}>
-          <span className="font-serif">{formatAmount(used)}</span>
-          <span className="text-ink-4 text-xs"> / {formatAmount(limit)}</span>
+        <span className="text-[13px] text-ink-3">{label}</span>
+        <span>
+          <span className={cn('font-serif text-[16px]', over ? 'text-red-500' : warn ? 'text-amber-600' : 'text-ink')}>
+            {formatAmount(used)}
+          </span>
+          <span className="font-serif text-[13px] text-ink-4"> / {formatAmount(limit)}</span>
         </span>
       </div>
       <Progress
@@ -125,16 +127,16 @@ function BudgetSetupForm({ initial, onSave, onCancel }: SetupFormProps) {
 function AmountRow({ label, value, onChange }: { label: string; value: number; onChange: (v: number) => void }) {
   return (
     <div className="flex items-center gap-3">
-      <span className="w-20 shrink-0 text-xs text-ink-3">{label}</span>
+      <span className="w-20 shrink-0 text-[13px] text-ink-3">{label}</span>
       <div className="flex flex-1 items-center gap-1 border-b-theme pb-0.5 focus-within:border-b-[var(--text-muted)] transition-colors">
-        <span className="text-xs text-ink-4">¥</span>
+        <span className="text-[13px] text-ink-4">¥</span>
         <input
           type="number"
           value={value || ''}
           onChange={(e) => onChange(Number(e.target.value) || 0)}
           placeholder="0"
           min={0}
-          className="flex-1 bg-transparent text-sm text-ink outline-none placeholder:text-ink-4"
+          className="flex-1 bg-transparent text-[15px] text-ink outline-none placeholder:text-ink-4"
         />
       </div>
     </div>

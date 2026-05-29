@@ -25,12 +25,12 @@ export function Wishlist() {
       <h1 className="text-base font-medium text-ink">清单</h1>
 
       <section className="flex flex-col gap-3">
-        <h2 className="text-[10px] font-medium uppercase tracking-[0.14em] text-ink-4">
+        <h2 className="text-[11px] font-medium uppercase tracking-[0.14em] text-ink-4">
           待购清单{activeItems.length > 0 && <span className="ml-1.5">· {activeItems.length}</span>}
         </h2>
 
         {activeItems.length === 0 ? (
-          <Card className="py-6 text-center text-xs text-ink-4">还没有待购商品 — 通过对话框添加，或从冷静期通过</Card>
+          <Card className="py-6 text-center text-[13px] text-ink-4">还没有待购商品 — 通过对话框添加，或从冷静期通过</Card>
         ) : (
           activeItems.map((item) => (
             <WishlistItemCard
@@ -46,7 +46,7 @@ export function Wishlist() {
 
       {pendingImpulse.length > 0 && (
         <section className="flex flex-col gap-3">
-          <h2 className="text-[10px] font-medium uppercase tracking-[0.14em] text-ink-4">
+          <h2 className="text-[11px] font-medium uppercase tracking-[0.14em] text-ink-4">
             冷静期中 · {pendingImpulse.length}
           </h2>
           {pendingImpulse.map((record) => (
@@ -69,22 +69,22 @@ function WishlistItemCard({ item, isPoolFocus, onPin, onDismiss }: {
       <CardContent className="flex flex-col gap-2">
         <div className="flex items-start justify-between gap-2">
           <div className="flex-1 min-w-0">
-            <p className="text-sm font-medium text-ink leading-snug">{item.item_name}</p>
+            <p className="text-[15px] font-medium text-ink leading-snug">{item.item_name}</p>
             <div className="mt-1 flex flex-wrap items-center gap-2">
               {item.estimated_price != null && (
-                <span className="font-serif text-xs text-ink-3">约 {formatAmount(item.estimated_price)}</span>
+                <span className="font-serif text-[16px] text-ink-3">约 {formatAmount(item.estimated_price)}</span>
               )}
-              <span className="rounded border-theme px-1.5 py-0.5 text-[10px] text-ink-4">
+              <span className="rounded border-theme px-1.5 py-0.5 text-[11px] text-ink-4">
                 {SEASON_LABEL[item.season_tag] ?? item.season_tag}
               </span>
               {item.worthiness_score != null && (
-                <span className={cn('text-[10px] font-medium tabular-nums',
+                <span className={cn('text-[11px] font-medium tabular-nums',
                   item.worthiness_score >= 8 ? 'text-amber-600' : item.worthiness_score >= 5 ? 'text-ink-2' : 'text-ink-4'
                 )}>★ {item.worthiness_score}</span>
               )}
             </div>
             {item.worthiness_reason && (
-              <p className="mt-1.5 text-[11px] leading-relaxed text-ink-4 italic">{item.worthiness_reason}</p>
+              <p className="mt-1.5 text-[13px] leading-relaxed text-ink-4 italic">{item.worthiness_reason}</p>
             )}
           </div>
           <div className="flex shrink-0 gap-1">
@@ -111,13 +111,13 @@ function ImpulseActiveCard({ record, onDismiss }: { record: ImpulseRecord; onDis
     <Card>
       <CardContent className="flex items-center justify-between gap-3">
         <div className="flex-1 min-w-0">
-          <p className="text-sm font-medium text-ink-2">{record.item_name}</p>
+          <p className="text-[15px] font-medium text-ink-2">{record.item_name}</p>
           <div className="mt-1 flex items-center gap-2">
             {record.estimated_price != null && (
-              <span className="font-serif text-xs text-ink-4">约 {formatAmount(record.estimated_price)}</span>
+              <span className="font-serif text-[16px] text-ink-4">约 {formatAmount(record.estimated_price)}</span>
             )}
-            <span className="flex items-center gap-1 text-[11px] text-ink-4">
-              <Clock size={10} />{remaining}
+            <span className="flex items-center gap-1 text-[13px] text-ink-4">
+              <Clock size={11} />{remaining}
             </span>
           </div>
         </div>

@@ -80,7 +80,7 @@ function SetupPhase({ execStore, onStart }: { execStore: ReturnType<typeof useEx
             type="text" value={category} onChange={(e) => setCategory(e.target.value)}
             onKeyDown={(e) => { if (e.key === 'Enter') void handleStart() }}
             placeholder="品类，如：球鞋、裤子、耳机…" autoFocus
-            className="w-full bg-transparent text-base text-ink outline-none border-b-theme focus:border-b-[var(--text-muted)] pb-1 placeholder:text-ink-4 transition-colors"
+            className="w-full bg-transparent text-[15px] text-ink outline-none border-b-theme focus:border-b-[var(--text-muted)] pb-1 placeholder:text-ink-4 transition-colors"
           />
           <Button onClick={() => void handleStart()} disabled={!category.trim() || starting}>
             {starting ? '准备中…' : '开始 15 分钟计时 →'}
@@ -102,7 +102,7 @@ function TimingPhase({ phase, execStore, onExpire, onEarlyDecide }: {
     <>
       <Card>
         <CardContent className="flex flex-col items-center gap-4 py-4">
-          <p className="text-xs text-ink-4">{phase.category}</p>
+          <p className="text-[13px] text-ink-4">{phase.category}</p>
           <CountdownDisplay remaining={remaining} total={phase.totalSeconds} />
           <Button variant="outline" size="sm" onClick={onEarlyDecide}>提前决策</Button>
         </CardContent>
@@ -126,7 +126,7 @@ function ExpiredPhase({ phase, execStore, onBought, onSkip, onUndecided }: {
       <Card>
         <CardContent className="flex flex-col items-center gap-4 py-6 text-center">
           <p className="font-serif text-2xl text-ink">时间到了</p>
-          <p className="text-sm text-ink-3">{phase.category} · 做出决定</p>
+          <p className="text-[15px] text-ink-3">{phase.category} · 做出决定</p>
           <div className="flex w-full gap-2">
             <Button variant="outline" size="sm" className="flex-1" onClick={() => void handle(onSkip)} disabled={loading}>跳过</Button>
             <Button variant="outline" size="sm" className="flex-1" onClick={() => void handle(onUndecided)} disabled={loading}>留着想</Button>
@@ -170,15 +170,15 @@ function RecordingPhase({ phase, execStore, reviewStore, onDone }: {
             className="w-full bg-transparent font-serif text-4xl text-ink outline-none placeholder:text-ink-4" />
         </div>
         <input type="text" value={itemName} onChange={(e) => setItemName(e.target.value)} placeholder={`买了什么（默认：${phase.category}）`}
-          className="w-full bg-transparent text-sm text-ink-2 outline-none border-b-theme focus:border-b-[var(--text-muted)] transition-colors pb-1 placeholder:text-ink-4" />
+          className="w-full bg-transparent text-[15px] text-ink-2 outline-none border-b-theme focus:border-b-[var(--text-muted)] transition-colors pb-1 placeholder:text-ink-4" />
 
         {brands.length > 0 ? (
           <div className="flex flex-col gap-1.5">
-            <p className="text-xs text-ink-4">买的哪个品牌？</p>
+            <p className="text-[13px] text-ink-4">买的哪个品牌？</p>
             <div className="flex flex-wrap gap-1.5">
               {brands.map((b) => (
                 <button key={b.id} onClick={() => setBrand(b.brand_name === brand ? '' : b.brand_name)}
-                  className={cn('rounded-lg border-theme px-3 py-1.5 text-xs font-medium transition-colors', brand === b.brand_name ? 'bg-accent text-on-accent' : 'text-ink-2 hover:bg-card-alt')}>
+                  className={cn('rounded-lg border-theme px-3 py-1.5 text-[13px] font-medium transition-colors', brand === b.brand_name ? 'bg-accent text-on-accent' : 'text-ink-2 hover:bg-card-alt')}>
                   {b.brand_name}
                 </button>
               ))}
@@ -186,10 +186,10 @@ function RecordingPhase({ phase, execStore, reviewStore, onDone }: {
           </div>
         ) : (
           <input type="text" value={brand} onChange={(e) => setBrand(e.target.value)} placeholder="品牌（可选）"
-            className="w-full bg-transparent text-sm text-ink-2 outline-none border-b-theme focus:border-b-[var(--text-muted)] transition-colors pb-1 placeholder:text-ink-4" />
+            className="w-full bg-transparent text-[15px] text-ink-2 outline-none border-b-theme focus:border-b-[var(--text-muted)] transition-colors pb-1 placeholder:text-ink-4" />
         )}
 
-        <p className="text-[11px] text-ink-4">会自动生成 7 天和 30 天复盘提醒</p>
+        <p className="text-[13px] text-ink-4">会自动生成 7 天和 30 天复盘提醒</p>
         <div className="flex justify-end border-t-theme pt-3">
           <Button onClick={() => void handleConfirm()} disabled={saving || amount <= 0}>{saving ? '保存中…' : '确认'}</Button>
         </div>
@@ -227,13 +227,13 @@ function BrandSection({ category, brands, execStore, readonly = false }: {
           <div className="flex flex-wrap gap-2">
             {brands.map((b) => (
               <div key={b.id} className="flex items-center gap-1.5 rounded-lg border-theme bg-card-alt px-2.5 py-1.5">
-                <span className="text-xs font-medium text-ink-2">{b.brand_name}</span>
-                <span className="text-[10px] text-amber-500">★{b.weight}</span>
+                <span className="text-[13px] font-medium text-ink-2">{b.brand_name}</span>
+                <span className="text-[11px] text-amber-500">★{b.weight}</span>
               </div>
             ))}
           </div>
         ) : (
-          <p className="text-xs text-ink-4">暂无 {category} 品牌</p>
+          <p className="text-[13px] text-ink-4">暂无 {category} 品牌</p>
         )}
         {!readonly && (
           adding ? (
@@ -241,13 +241,13 @@ function BrandSection({ category, brands, execStore, readonly = false }: {
               <input type="text" value={newBrand} onChange={(e) => setNewBrand(e.target.value)}
                 onKeyDown={(e) => { if (e.key === 'Enter') void handleAdd() }}
                 placeholder="品牌名称" autoFocus
-                className="flex-1 rounded-lg border-theme bg-card-alt px-3 py-1.5 text-sm text-ink outline-none focus:ring-1 focus:ring-[var(--border)]" />
+                className="flex-1 rounded-lg border-theme bg-card-alt px-3 py-1.5 text-[15px] text-ink outline-none focus:ring-1 focus:ring-[var(--border)]" />
               <Button size="sm" onClick={() => void handleAdd()} disabled={saving || !newBrand.trim()}>添加</Button>
               <Button size="sm" variant="ghost" onClick={() => setAdding(false)}>取消</Button>
             </div>
           ) : (
-            <button onClick={() => setAdding(true)} className="flex items-center gap-1 text-xs text-ink-4 hover:text-ink-3 transition-colors">
-              <Plus size={12} /> 添加品牌
+            <button onClick={() => setAdding(true)} className="flex items-center gap-1 text-[13px] text-ink-4 hover:text-ink-3 transition-colors">
+              <Plus size={13} /> 添加品牌
             </button>
           )
         )}
@@ -269,8 +269,8 @@ function SOPSection({ rules, defaultOpen = false }: { rules: ReturnType<typeof u
       {open && (
         <ul className="mt-4 flex flex-col gap-2.5">
           {rules.map((rule, i) => (
-            <li key={rule.id} className="flex gap-2.5 text-sm">
-              <span className="mt-0.5 shrink-0 text-[11px] text-ink-4">{i + 1}.</span>
+            <li key={rule.id} className="flex gap-2.5 text-[15px]">
+              <span className="mt-0.5 shrink-0 text-[13px] text-ink-4">{i + 1}.</span>
               <div>
                 <span className="font-medium text-ink-2">{rule.title}</span>
                 {rule.content !== rule.title && <span className="text-ink-3"> — {rule.content}</span>}

@@ -27,11 +27,11 @@ export function WishlistNudgeCard({ item, onKeep, onDismiss }: WishlistNudgeCard
     <Card>
       <div className="flex flex-col gap-3">
         <div>
-          <p className="text-[10px] font-medium uppercase tracking-[0.14em] text-ink-4 mb-2">你还想要吗</p>
+          <p className="text-[11px] font-medium uppercase tracking-[0.14em] text-ink-4 mb-2">你还想要吗</p>
           <p className="text-base font-medium text-ink">{item.item_name}</p>
-          <p className="mt-0.5 text-xs text-ink-4">
+          <p className="mt-0.5 text-[13px] text-ink-4">
             加入 {daysAgo} 天了
-            {item.estimated_price != null && <span> · 约 <span className="font-serif">{formatAmount(item.estimated_price)}</span></span>}
+            {item.estimated_price != null && <span> · 约 <span className="font-serif text-[16px]">{formatAmount(item.estimated_price)}</span></span>}
           </p>
         </div>
         <div className="flex gap-2">

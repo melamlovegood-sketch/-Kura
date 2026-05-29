@@ -35,24 +35,24 @@ export function ReviewCard({ task }: { task: ReviewTask }) {
     <Card>
       <div className="flex flex-col gap-4">
         <div>
-          <p className="text-[10px] font-medium uppercase tracking-[0.14em] text-ink-4">
+          <p className="text-[11px] font-medium uppercase tracking-[0.14em] text-ink-4">
             购买复盘 · {task.review_type === 'day7' ? '7天' : '30天'}
           </p>
           <p className="mt-1.5 text-base font-medium text-ink">{task.item_name}</p>
-          <p className="mt-0.5 text-xs text-ink-4">
+          <p className="mt-0.5 text-[13px] text-ink-4">
             {daysAgo} 天前入手{task.brand && <span> · {task.brand}</span>}
           </p>
         </div>
 
         <div className="flex flex-col gap-2">
-          <p className="text-xs text-ink-3">用了多久？</p>
+          <p className="text-[13px] text-ink-3">用了多久？</p>
           <div className="flex gap-1.5">
             {FREQ_OPTIONS.map((opt) => (
               <button
                 key={opt.value}
                 onClick={() => !saving && setFreq(opt.value)}
                 className={cn(
-                  'flex-1 rounded-lg border-theme py-2 text-xs font-medium transition-colors',
+                  'flex-1 rounded-lg border-theme py-2 text-[13px] font-medium transition-colors',
                   freq === opt.value ? 'bg-accent text-on-accent border-transparent' : 'text-ink-3 hover:text-ink-2',
                 )}
               >
@@ -63,14 +63,14 @@ export function ReviewCard({ task }: { task: ReviewTask }) {
         </div>
 
         <div className="flex flex-col gap-2">
-          <p className="text-xs text-ink-3">值得吗？</p>
+          <p className="text-[13px] text-ink-3">值得吗？</p>
           <div className="flex gap-1.5">
             {WORTH_OPTIONS.map((opt) => (
               <button
                 key={opt.value}
                 onClick={() => !saving && setWorth(opt.value)}
                 className={cn(
-                  'flex-1 rounded-lg border-theme py-2 text-xs font-medium transition-colors',
+                  'flex-1 rounded-lg border-theme py-2 text-[13px] font-medium transition-colors',
                   worth === opt.value ? worthSelected(opt.value) : 'text-ink-3 hover:text-ink-2',
                 )}
               >
@@ -80,7 +80,7 @@ export function ReviewCard({ task }: { task: ReviewTask }) {
           </div>
         </div>
 
-        {saving && <p className="text-center text-xs text-ink-4">保存中…</p>}
+        {saving && <p className="text-center text-[13px] text-ink-4">保存中…</p>}
       </div>
     </Card>
   )

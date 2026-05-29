@@ -55,7 +55,7 @@ export function ConfirmTransactionCard({ initial, source, onConfirm, onCancel }:
           value={description}
           onChange={(e) => setDescription(e.target.value)}
           placeholder="消费描述"
-          className="w-full bg-transparent text-sm text-ink-2 outline-none border-b-theme focus:border-b-[var(--text-muted)] transition-colors pb-1 placeholder:text-ink-4"
+          className="w-full bg-transparent text-[15px] text-ink-2 outline-none border-b-theme focus:border-b-[var(--text-muted)] transition-colors pb-1 placeholder:text-ink-4"
         />
 
         <CategoryPicker value={category} onChange={setCategory} />
@@ -64,7 +64,7 @@ export function ConfirmTransactionCard({ initial, source, onConfirm, onCancel }:
           type="date"
           value={date}
           onChange={(e) => setDate(e.target.value)}
-          className="w-fit bg-transparent text-xs text-ink-4 outline-none border-b-theme focus:border-b-[var(--text-muted)] transition-colors"
+          className="w-fit bg-transparent text-[13px] text-ink-4 outline-none border-b-theme focus:border-b-[var(--text-muted)] transition-colors"
         />
 
         <div className="flex items-center justify-between border-t-theme pt-3">

@@ -11,7 +11,7 @@ export function WishPoolCard() {
 
   if (!pool) {
     return (
-      <CardAlt className="py-5 text-center text-xs text-ink-4">
+      <CardAlt className="py-5 text-center text-[13px] text-ink-4">
         还没有许愿目标 — 在待购清单中 pin 一件商品
       </CardAlt>
     )
@@ -41,17 +41,17 @@ function ActivePoolCard({ pool }: { pool: NonNullable<ReturnType<typeof useWishP
     <CardAlt className={cn('transition-shadow duration-500', pulse && 'shadow-lg shadow-amber-100/60')}>
       <CardHeader className="flex flex-row items-center justify-between">
         <CardTitle>许愿池</CardTitle>
-        {completed && <span className="text-xs font-medium text-amber-600">目标达成 ✓</span>}
+        {completed && <span className="text-[13px] font-medium text-amber-600">目标达成 ✓</span>}
       </CardHeader>
 
       <div className="flex flex-col gap-3">
         <div className="flex items-baseline justify-between">
-          <span className="text-sm text-ink-2">{pool.focus_item_name}</span>
-          <span className="text-sm text-ink-3">
-            <span className={cn('font-serif font-medium text-ink tabular-nums transition-colors', pulse && 'text-amber-600')}>
+          <span className="font-serif text-[18px] text-ink leading-tight">{pool.focus_item_name}</span>
+          <span className="shrink-0 ml-3">
+            <span className={cn('font-serif text-[16px] font-medium text-ink tabular-nums transition-colors', pulse && 'text-amber-600')}>
               {formatAmount(animSaved)}
             </span>
-            <span className="text-ink-4"> / {formatAmount(pool.target_amount)}</span>
+            <span className="font-serif text-[13px] text-ink-4"> / {formatAmount(pool.target_amount)}</span>
           </span>
         </div>
 
@@ -63,7 +63,7 @@ function ActivePoolCard({ pool }: { pool: NonNullable<ReturnType<typeof useWishP
           />
         </div>
 
-        <p className="text-right text-[11px] text-ink-4">
+        <p className="text-right text-[13px] text-ink-4">
           {pct.toFixed(0)}%
           {pool.target_amount > pool.saved_amount && (
             <span> · 还差 {formatAmount(pool.target_amount - pool.saved_amount)}</span>

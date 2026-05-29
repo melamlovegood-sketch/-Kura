@@ -131,7 +131,7 @@ export function Home() {
 
       {streaming && (
         <Card>
-          <p className="whitespace-pre-wrap text-sm leading-relaxed text-ink-3">
+          <p className="whitespace-pre-wrap text-[15px] leading-relaxed text-ink-3">
             {streamText}<span className="ml-1 inline-block h-3 w-0.5 animate-pulse bg-ink-4" />
           </p>
         </Card>
@@ -159,35 +159,37 @@ export function Home() {
         <Card><p className="text-sm text-ink-3">{lastResult.display_text}</p></Card>
       )}
 
-      <div className="h-4 md:h-[80px]" />
+      <div className="h-16 md:h-0" />
 
-      {/* Dialog bar */}
-      <div className="fixed bottom-14 md:bottom-15 inset-x-0 mx-auto z-30 w-full max-w-[480px] md:max-w-[640px] border-t-theme bg-card md:bg-page px-6 py-3">
-        {image && (
-          <div className="mb-2 flex items-center gap-2">
-            <span className="max-w-[200px] truncate text-xs text-ink-4">{image.file.name}</span>
-            <button onClick={() => setImage(null)} className="text-ink-4 hover:text-ink-3 transition-colors"><X size={14} /></button>
+      {/* Dialog bar — full-width outer, centered inner */}
+      <div className="fixed bottom-14 md:bottom-[68px] left-0 right-0 z-30 border-t-theme bg-card md:bg-page">
+        <div className="mx-auto w-full max-w-[480px] md:max-w-[640px] px-6 py-3">
+          {image && (
+            <div className="mb-2 flex items-center gap-2">
+              <span className="max-w-[200px] truncate text-[13px] text-ink-4">{image.file.name}</span>
+              <button onClick={() => setImage(null)} className="text-ink-4 hover:text-ink-3 transition-colors"><X size={14} /></button>
+            </div>
+          )}
+          <div className="flex items-end gap-2">
+            <button onClick={() => fileRef.current?.click()} className="shrink-0 pb-2 text-ink-4 hover:text-ink-3 transition-colors">
+              <ImagePlus size={20} />
+            </button>
+            <input ref={fileRef} type="file" accept="image/*" className="hidden" onChange={handleInputFileSelect} />
+
+            <textarea
+              value={text}
+              onChange={(e) => setText(e.target.value)}
+              onKeyDown={handleKeyDown}
+              placeholder="说一句话，或拖拽截图到上方…"
+              rows={1}
+              className="flex-1 resize-none rounded-xl border-theme bg-card-alt px-3.5 py-2 text-[15px] text-ink placeholder:text-ink-4 focus:bg-card focus:outline-none focus:ring-1 focus:ring-[var(--border)] transition-colors"
+              style={{ maxHeight: 120 }}
+            />
+
+            <Button size="icon" onClick={() => void handleSubmit()} disabled={streaming || (!text.trim() && !image)} className="shrink-0">
+              <Send size={15} />
+            </Button>
           </div>
-        )}
-        <div className="flex items-end gap-2">
-          <button onClick={() => fileRef.current?.click()} className="shrink-0 pb-2 text-ink-4 hover:text-ink-3 transition-colors">
-            <ImagePlus size={20} />
-          </button>
-          <input ref={fileRef} type="file" accept="image/*" className="hidden" onChange={handleInputFileSelect} />
-
-          <textarea
-            value={text}
-            onChange={(e) => setText(e.target.value)}
-            onKeyDown={handleKeyDown}
-            placeholder="说一句话，或拖拽截图到上方…"
-            rows={1}
-            className="flex-1 resize-none rounded-xl border-theme bg-card-alt px-3.5 py-2 text-sm text-ink placeholder:text-ink-4 focus:bg-card focus:outline-none focus:ring-1 focus:ring-[var(--border)] transition-colors"
-            style={{ maxHeight: 120 }}
-          />
-
-          <Button size="icon" onClick={() => void handleSubmit()} disabled={streaming || (!text.trim() && !image)} className="shrink-0">
-            <Send size={15} />
-          </Button>
         </div>
       </div>
     </ImageDropZone>
@@ -197,10 +199,10 @@ export function Home() {
 function BudgetConfirmCard({ data, onConfirm, onCancel }: { data: ParsedBudget; onConfirm: () => void; onCancel: () => void }) {
   return (
     <Card>
-      <p className="mb-3 text-[10px] font-medium uppercase tracking-[0.14em] text-ink-4">预算确认</p>
-      <div className="flex flex-col gap-2 text-sm">
-        {data.basic_life_limit   != null && <div className="flex justify-between"><span className="text-ink-3">基础生活</span><span className="font-serif text-ink">{formatAmount(data.basic_life_limit)}</span></div>}
-        {data.discretionary_limit != null && <div className="flex justify-between"><span className="text-ink-3">可支配</span><span className="font-serif text-ink">{formatAmount(data.discretionary_limit)}</span></div>}
+      <p className="mb-3 text-[11px] font-medium uppercase tracking-[0.14em] text-ink-4">预算确认</p>
+      <div className="flex flex-col gap-2">
+        {data.basic_life_limit   != null && <div className="flex justify-between"><span className="text-[13px] text-ink-3">基础生活</span><span className="font-serif text-[16px] text-ink">{formatAmount(data.basic_life_limit)}</span></div>}
+        {data.discretionary_limit != null && <div className="flex justify-between"><span className="text-[13px] text-ink-3">可支配</span><span className="font-serif text-[16px] text-ink">{formatAmount(data.discretionary_limit)}</span></div>}
       </div>
       <div className="mt-4 flex justify-between border-t-theme pt-3">
         <Button variant="ghost" size="sm" onClick={onCancel}>取消</Button>

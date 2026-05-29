@@ -7,6 +7,7 @@ import { useWishPoolStore } from '@/store/wishpool'
 import { formatAmount } from '@/lib/utils'
 import { cn } from '@/lib/utils'
 import { CostLabels } from '@/components/cost/CostLabels'
+import { WorthItCard } from '@/components/wishlist/WorthItCard'
 import type { ImpulseRecord, WishlistItem } from '@/types/db'
 
 const SEASON_LABEL: Record<string, string> = {
@@ -63,6 +64,7 @@ function WishlistItemCard({ item, isPoolFocus, onPin, onDismiss }: {
   item: WishlistItem; isPoolFocus: boolean; onPin: () => Promise<void>; onDismiss: () => void
 }) {
   const [pinning, setPinning] = useState(false)
+  const [showWorth, setShowWorth] = useState(false)
   async function handlePin() { setPinning(true); try { await onPin() } finally { setPinning(false) } }
 
   return (
@@ -102,6 +104,17 @@ function WishlistItemCard({ item, isPoolFocus, onPin, onDismiss }: {
             </button>
           </div>
         </div>
+
+        <div className="flex justify-end">
+          <button
+            onClick={() => setShowWorth((v) => !v)}
+            className={cn('text-[12px] font-medium transition-colors', showWorth ? 'text-ink-2' : 'text-ink-4 hover:text-ink-2')}
+          >
+            值不值？
+          </button>
+        </div>
+
+        {showWorth && <WorthItCard item={item} onClose={() => setShowWorth(false)} />}
       </CardContent>
     </Card>
   )

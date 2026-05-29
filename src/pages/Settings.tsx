@@ -7,6 +7,7 @@ import { ImageDropZone } from '@/components/ui/image-drop-zone'
 import { useSettingsStore, DEFAULT_MODELS } from '@/store/settings'
 import { usePrinciplesStore } from '@/store/principles'
 import { SubscriptionManager } from '@/components/subscription/SubscriptionManager'
+import { AchievementsSection } from '@/components/achievements/AchievementsSection'
 import { routeIntent } from '@/lib/ai/router'
 import { fileToBase64 } from '@/lib/utils'
 import { THEME_LABELS, type Theme } from '@/lib/theme'
@@ -219,6 +220,8 @@ export function Settings() {
       <Button onClick={() => void handleSave()} disabled={saving}>
         {saving ? '保存中…' : saved ? '已保存' : '保存设置'}
       </Button>
+
+      <AchievementsSection />
 
       <SubscriptionManager />
 

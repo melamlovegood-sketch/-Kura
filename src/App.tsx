@@ -15,6 +15,7 @@ import { useExecutionStore } from '@/store/execution'
 import { useReviewStore } from '@/store/review'
 import { useExpiryStore } from '@/store/expiry'
 import { useSubscriptionStore } from '@/store/subscriptions'
+import { useAchievementsStore } from '@/store/achievements'
 
 export function App() {
   const [showSplash, setShowSplash] = useState(true)
@@ -30,6 +31,8 @@ export function App() {
   const loadExpiry     = useExpiryStore   ((s) => s.load)
   const loadSubs       = useSubscriptionStore((s) => s.load)
   const generateSubTx  = useSubscriptionStore((s) => s.generateDueTransactions)
+  const loadAchievements = useAchievementsStore((s) => s.load)
+  const recomputeAch     = useAchievementsStore((s) => s.recompute)
 
   useEffect(() => {
     void loadSettings()
@@ -43,7 +46,9 @@ export function App() {
     void loadExpiry()
     // Load subscriptions, then auto-record any charges whose billing day has passed.
     void loadSubs().then(() => generateSubTx())
-  }, [loadSettings, loadPrinciples, loadImpulse, loadWishlist, loadWishPool, loadExecution, loadReview, loadRegret, loadExpiry, loadSubs, generateSubTx])
+    // Load cached achievements/streak, then refresh from the DB.
+    void loadAchievements().then(() => recomputeAch())
+  }, [loadSettings, loadPrinciples, loadImpulse, loadWishlist, loadWishPool, loadExecution, loadReview, loadRegret, loadExpiry, loadSubs, generateSubTx, loadAchievements, recomputeAch])
 
   if (showSplash) {
     return <SplashScreen onDone={() => setShowSplash(false)} />

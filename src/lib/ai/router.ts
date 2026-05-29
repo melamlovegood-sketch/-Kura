@@ -35,7 +35,8 @@ budget（设置预算）
 
 execution（开始购物执行）
   data: { category: string }
-  示例："决定买那双鞋了" / "要去买裤子"
+  category 用中文品类词，尽量贴合用户原话（如"跑鞋""裤子""耳机"），不要用英文或泛类代码
+  示例："决定买那双鞋了"→{category:"鞋"} / "要去买裤子"→{category:"裤子"} / "我要去买跑鞋"→{category:"跑鞋"}
 
 principles（添加消费原则）— 用户表达消费理念，或上传文章/截图
   data: { items: string[] }  -- 提取的原则列表，每条简洁短句（20字以内）

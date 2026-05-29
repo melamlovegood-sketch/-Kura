@@ -118,8 +118,23 @@ export function Home() {
   }
 
   async function handleTxConfirm(tx: ParsedTransaction) {
-    await addTransaction(tx, pendingTx?.source ?? 'text')
-    setPendingTx(null); setLastResult(null); void budgetStore.refresh()
+    console.debug('[handleTxConfirm] click', { tx, source: pendingTx?.source ?? 'text' })
+    try {
+      const id = await addTransaction(tx, pendingTx?.source ?? 'text')
+      console.debug('[handleTxConfirm] addTransaction ok', { id })
+      setPendingTx(null); setLastResult(null); void budgetStore.refresh()
+    } catch (err) {
+      // Previously this threw out of an un-awaited handler, so the card just
+      // stayed put with no feedback. Surface the failure instead.
+      console.error('[handleTxConfirm] addTransaction failed', err)
+      setPendingTx(null)
+      setLastResult({
+        module: 'unknown',
+        confidence: 0,
+        data: {},
+        display_text: `记账失败：${(err as Error).message || '请稍后重试'}`,
+      })
+    }
   }
 
   async function handleBudgetConfirm() {

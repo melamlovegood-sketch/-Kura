@@ -1,4 +1,5 @@
 import { create } from 'zustand'
+import { persist } from 'zustand/middleware'
 import { supabase } from '@/lib/supabase'
 import type { ImpulseRecord, ParsedImpulse } from '@/types/db'
 
@@ -12,7 +13,7 @@ interface ImpulseStore {
   dismiss: (id: string) => Promise<void>
 }
 
-export const useImpulseStore = create<ImpulseStore>((set, get) => ({
+export const useImpulseStore = create<ImpulseStore>()(persist((set, get) => ({
   items: [],
   loaded: false,
 
@@ -80,4 +81,7 @@ export const useImpulseStore = create<ImpulseStore>((set, get) => ({
     await supabase.from('impulse_records').update({ status: 'dismissed' }).eq('id', id)
     set({ items: get().items.filter((r) => r.id !== id) })
   },
+}), {
+  name: 'kura-impulse',
+  partialize: (s) => ({ items: s.items }),
 }))

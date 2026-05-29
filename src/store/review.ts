@@ -1,4 +1,5 @@
 import { create } from 'zustand'
+import { persist } from 'zustand/middleware'
 import { supabase } from '@/lib/supabase'
 import { useExecutionStore } from './execution'
 
@@ -33,7 +34,7 @@ interface ReviewStore {
   ) => Promise<void>
 }
 
-export const useReviewStore = create<ReviewStore>((set, get) => ({
+export const useReviewStore = create<ReviewStore>()(persist((set, get) => ({
   pendingTasks: [],
   loaded: false,
 
@@ -92,4 +93,7 @@ export const useReviewStore = create<ReviewStore>((set, get) => ({
 
     set({ pendingTasks: get().pendingTasks.filter((t) => t.id !== task.id) })
   },
+}), {
+  name: 'kura-review',
+  partialize: (s) => ({ pendingTasks: s.pendingTasks }),
 }))

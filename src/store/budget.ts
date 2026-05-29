@@ -1,4 +1,5 @@
 import { create } from 'zustand'
+import { persist } from 'zustand/middleware'
 import { supabase } from '@/lib/supabase'
 import type { BudgetData } from '@/types/db'
 
@@ -13,7 +14,7 @@ interface BudgetStore {
   }) => Promise<void>
 }
 
-export const useBudgetStore = create<BudgetStore>((set) => ({
+export const useBudgetStore = create<BudgetStore>()(persist((set) => ({
   data: null,
   loading: false,
 
@@ -50,4 +51,8 @@ export const useBudgetStore = create<BudgetStore>((set) => ({
     const { data } = await supabase.from('v_current_budget').select('*').maybeSingle()
     set({ data: (data as BudgetData | null) ?? null })
   },
+}), {
+  name: 'kura-budget',
+  // Cache only the data; `loading` is always transient.
+  partialize: (s) => ({ data: s.data }),
 }))

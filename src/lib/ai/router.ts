@@ -80,6 +80,14 @@ export async function routeIntent(
     })
   }
 
+  console.debug('[routeIntent] input', {
+    text: input,
+    hasImage: !!imageBase64,
+    // data URI prefix tells us the mime type was preserved (e.g. "data:image/png;base64,")
+    imagePrefix: imageBase64?.slice(0, 30),
+    imageLength: imageBase64?.length ?? 0,
+  })
+
   const messages: AIMessage[] = [
     { role: 'system', content: buildSystemPrompt(principles) },
     { role: 'user', content: content.length === 1 ? input : content },

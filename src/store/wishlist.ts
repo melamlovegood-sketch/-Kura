@@ -1,4 +1,5 @@
 import { create } from 'zustand'
+import { persist } from 'zustand/middleware'
 import { supabase } from '@/lib/supabase'
 import type { ParsedWishlistItem, WishlistItem } from '@/types/db'
 
@@ -14,7 +15,7 @@ interface WishlistStore {
   markNudged: (id: string) => Promise<void>
 }
 
-export const useWishlistStore = create<WishlistStore>((set, get) => ({
+export const useWishlistStore = create<WishlistStore>()(persist((set, get) => ({
   items: [],
   loaded: false,
 
@@ -100,4 +101,7 @@ export const useWishlistStore = create<WishlistStore>((set, get) => ({
       ),
     })
   },
+}), {
+  name: 'kura-wishlist',
+  partialize: (s) => ({ items: s.items }),
 }))

@@ -1,4 +1,5 @@
 import { create } from 'zustand'
+import { persist } from 'zustand/middleware'
 import { supabase } from '@/lib/supabase'
 import type { WishPoolData } from '@/types/db'
 
@@ -9,7 +10,7 @@ interface WishPoolStore {
   addSavings: (amount: number, description: string) => Promise<void>
 }
 
-export const useWishPoolStore = create<WishPoolStore>((set, get) => ({
+export const useWishPoolStore = create<WishPoolStore>()(persist((set, get) => ({
   pool: null,
   loaded: false,
 
@@ -49,4 +50,7 @@ export const useWishPoolStore = create<WishPoolStore>((set, get) => ({
 
     set({ pool: updated })
   },
+}), {
+  name: 'kura-wishpool',
+  partialize: (s) => ({ pool: s.pool }),
 }))

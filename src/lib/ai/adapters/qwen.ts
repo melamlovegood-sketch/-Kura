@@ -58,12 +58,25 @@ export async function readOpenAIStream(
 
       try {
         const json = JSON.parse(payload)
-        const delta: string = json.choices?.[0]?.delta?.content ?? ''
+        // Surface API errors that arrive inside the stream body (HTTP was 200)
+        if (json.error) {
+          throw new Error(`Qwen stream error: ${json.error.message ?? JSON.stringify(json.error)}`)
+        }
+        // qwen-vl models can return delta.content as a string OR an array of parts
+        const rawDelta = json.choices?.[0]?.delta?.content
+        const delta =
+          typeof rawDelta === 'string'
+            ? rawDelta
+            : Array.isArray(rawDelta)
+              ? rawDelta.map((p: { text?: string } | string) => (typeof p === 'string' ? p : p?.text ?? '')).join('')
+              : ''
         if (delta) {
           full += delta
           onChunk(delta)
         }
-      } catch {
+      } catch (e) {
+        // Re-throw real API errors; only swallow JSON parse failures on partial chunks
+        if (e instanceof Error && e.message.startsWith('Qwen stream error')) throw e
         // malformed chunk, skip
       }
     }

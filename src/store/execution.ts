@@ -1,4 +1,5 @@
 import { create } from 'zustand'
+import { persist } from 'zustand/middleware'
 import { supabase } from '@/lib/supabase'
 
 export interface BrandEntry {
@@ -32,7 +33,7 @@ interface ExecutionStore {
   ) => Promise<void>
 }
 
-export const useExecutionStore = create<ExecutionStore>((set, get) => ({
+export const useExecutionStore = create<ExecutionStore>()(persist((set, get) => ({
   brands: [],
   sopRules: [],
   loaded: false,
@@ -100,4 +101,7 @@ export const useExecutionStore = create<ExecutionStore>((set, get) => ({
       })
       .eq('id', id)
   },
+}), {
+  name: 'kura-execution',
+  partialize: (s) => ({ brands: s.brands, sopRules: s.sopRules }),
 }))

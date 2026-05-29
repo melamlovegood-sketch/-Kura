@@ -1,4 +1,5 @@
 import { create } from 'zustand'
+import { persist } from 'zustand/middleware'
 import { supabase } from '@/lib/supabase'
 
 export interface Principle {
@@ -16,7 +17,7 @@ interface PrinciplesStore {
   remove: (id: string) => Promise<void>
 }
 
-export const usePrinciplesStore = create<PrinciplesStore>((set, get) => ({
+export const usePrinciplesStore = create<PrinciplesStore>()(persist((set, get) => ({
   items: [],
   loaded: false,
 
@@ -50,4 +51,7 @@ export const usePrinciplesStore = create<PrinciplesStore>((set, get) => ({
     await supabase.from('personal_principles').delete().eq('id', id)
     set({ items: get().items.filter((p) => p.id !== id) })
   },
+}), {
+  name: 'kura-principles',
+  partialize: (s) => ({ items: s.items }),
 }))

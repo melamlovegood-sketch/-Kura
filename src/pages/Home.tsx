@@ -36,7 +36,6 @@ export function Home() {
   const [text, setText]   = useState('')
   const [image, setImage] = useState<{ file: File; base64: string } | null>(null)
   const [streaming, setStreaming]   = useState(false)
-  const [streamText, setStreamText] = useState('')
   const [lastResult, setLastResult] = useState<IntentResult | null>(null)
   const abortRef = useRef<AbortController | null>(null)
   const fileRef  = useRef<HTMLInputElement>(null)
@@ -55,12 +54,20 @@ export function Home() {
     abortRef.current = ctrl
     const source: 'text' | 'screenshot' = image ? 'screenshot' : 'text'
 
-    setStreaming(true); setStreamText(''); setLastResult(null)
+    setStreaming(true); setLastResult(null)
     setPendingTx(null); setPendingBudget(null)
 
     try {
       const principles = principlesStore.items.map((p) => p.content)
-      const result = await routeIntent(adapter, text.trim() || '（图片输入）', image?.base64, (d) => setStreamText((p) => p + d), ctrl.signal, principles)
+      console.debug('[handleSubmit] submitting', {
+        source,
+        hasImage: !!image,
+        imageName: image?.file.name,
+        base64Length: image?.base64.length ?? 0,
+      })
+      // The router streams raw JSON; we intentionally do NOT pipe it to the UI (see Bug #2).
+      const result = await routeIntent(adapter, text.trim() || '（图片输入）', image?.base64, undefined, ctrl.signal, principles)
+      console.debug('[handleSubmit] routed', { module: result.module, confidence: result.confidence })
       setLastResult(result); setText(''); setImage(null)
 
       switch (result.module) {
@@ -83,8 +90,17 @@ export function Home() {
         }
       }
     } catch (err) {
-      if ((err as Error).name !== 'AbortError') console.error(err)
-    } finally { setStreaming(false); setStreamText('') }
+      if ((err as Error).name !== 'AbortError') {
+        console.error('[handleSubmit] failed', err)
+        // Surface the failure instead of silently doing nothing (see Bug #1).
+        setLastResult({
+          module: 'unknown',
+          confidence: 0,
+          data: {},
+          display_text: `出错了：${(err as Error).message || '请稍后重试'}`,
+        })
+      }
+    } finally { setStreaming(false) }
   }
 
   async function handleTxConfirm(tx: ParsedTransaction) {
@@ -131,8 +147,9 @@ export function Home() {
 
       {streaming && (
         <Card>
-          <p className="whitespace-pre-wrap text-[15px] leading-relaxed text-ink-3">
-            {streamText}<span className="ml-1 inline-block h-3 w-0.5 animate-pulse bg-ink-4" />
+          {/* Model output is structured JSON — never shown raw. Just indicate progress. */}
+          <p className="flex items-center gap-1.5 text-[15px] leading-relaxed text-ink-3">
+            正在分析<span className="inline-block h-3 w-0.5 animate-pulse bg-ink-4" />
           </p>
         </Card>
       )}

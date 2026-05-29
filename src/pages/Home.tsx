@@ -24,6 +24,8 @@ import { useWishPoolStore } from '@/store/wishpool'
 import { useReviewStore } from '@/store/review'
 import { useExpiryStore } from '@/store/expiry'
 import { useSubscriptionStore } from '@/store/subscriptions'
+import { useDuplicateStore } from '@/store/duplicate'
+import { DuplicateWarningCard } from '@/components/wishlist/DuplicateWarningCard'
 import { addTransaction } from '@/store/transactions'
 import { routeIntent } from '@/lib/ai/router'
 import { fileToBase64, formatAmount } from '@/lib/utils'
@@ -43,6 +45,7 @@ export function Home() {
   const reviewStore     = useReviewStore()
   const expiryStore     = useExpiryStore()
   const subscriptionStore = useSubscriptionStore()
+  const duplicateStore  = useDuplicateStore()
 
   const [text, setText]   = useState('')
   const [image, setImage] = useState<{ file: File; base64: string } | null>(null)
@@ -93,7 +96,12 @@ export function Home() {
           break
         }
         case 'impulse':   await impulseStore.add(result.data as ParsedImpulse, cooldownHours); break
-        case 'wishlist':  await wishlistStore.add(result.data as ParsedWishlistItem); break
+        case 'wishlist': {
+          const item = await wishlistStore.add(result.data as ParsedWishlistItem)
+          // Background same-category scan; never blocks the add (SPEC_PHASE2 §3).
+          if (item) void duplicateStore.detect(item)
+          break
+        }
         case 'wish_pool': {
           const d = result.data as ParsedSavings
           if (wishPoolStore.pool) await wishPoolStore.addSavings(d.amount, d.description)
@@ -209,6 +217,7 @@ export function Home() {
 
       {!pendingTx && !pendingBudget && (
         <>
+          <DuplicateWarningCard />
           <WishPoolReachedCard />
           <SubscriptionReminderCard />
           <ExpiryReminderCard />

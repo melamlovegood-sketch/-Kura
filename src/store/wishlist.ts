@@ -7,7 +7,7 @@ interface WishlistStore {
   items: WishlistItem[]
   loaded: boolean
   load: () => Promise<void>
-  add: (data: ParsedWishlistItem, impulseRecordId?: string) => Promise<void>
+  add: (data: ParsedWishlistItem, impulseRecordId?: string) => Promise<WishlistItem | null>
   /** Set this item as the wish pool focus, create/reuse wish_pool record */
   pin: (item: WishlistItem) => Promise<void>
   dismiss: (id: string) => Promise<void>
@@ -50,7 +50,9 @@ export const useWishlistStore = create<WishlistStore>()(persist((set, get) => ({
 
     if (data) {
       set({ items: [...get().items, data as WishlistItem] })
+      return data as WishlistItem
     }
+    return null
   },
 
   pin: async (item) => {

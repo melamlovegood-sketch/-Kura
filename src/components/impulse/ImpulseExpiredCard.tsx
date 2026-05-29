@@ -2,6 +2,7 @@ import { useState } from 'react'
 import { Card } from '@/components/ui/card'
 import { Button } from '@/components/ui/button'
 import { formatAmount } from '@/lib/utils'
+import { CostLabels } from '@/components/cost/CostLabels'
 import type { ImpulseRecord } from '@/types/db'
 
 interface ImpulseExpiredCardProps {
@@ -35,6 +36,7 @@ export function ImpulseExpiredCard({ record, onApprove, onDismiss }: ImpulseExpi
             {record.estimated_price != null && <span> · 约 <span className="font-serif text-[16px]">{formatAmount(record.estimated_price)}</span></span>}
             {record.source && <span> · {record.source}</span>}
           </p>
+          <CostLabels amount={record.estimated_price} />
         </div>
         <p className="text-[15px] text-ink-3">冷静期结束了，你还想要吗？</p>
         <div className="flex gap-2">

@@ -6,6 +6,7 @@ import { useImpulseStore } from '@/store/impulse'
 import { useWishPoolStore } from '@/store/wishpool'
 import { formatAmount } from '@/lib/utils'
 import { cn } from '@/lib/utils'
+import { CostLabels } from '@/components/cost/CostLabels'
 import type { ImpulseRecord, WishlistItem } from '@/types/db'
 
 const SEASON_LABEL: Record<string, string> = {
@@ -86,6 +87,7 @@ function WishlistItemCard({ item, isPoolFocus, onPin, onDismiss }: {
             {item.worthiness_reason && (
               <p className="mt-1.5 text-[13px] leading-relaxed text-ink-4 italic">{item.worthiness_reason}</p>
             )}
+            <CostLabels amount={item.estimated_price} />
           </div>
           <div className="flex shrink-0 gap-1">
             <button
@@ -120,6 +122,7 @@ function ImpulseActiveCard({ record, onDismiss }: { record: ImpulseRecord; onDis
               <Clock size={11} />{remaining}
             </span>
           </div>
+          <CostLabels amount={record.estimated_price} />
         </div>
         <button onClick={onDismiss} className="shrink-0 text-ink-4 hover:text-ink-3 transition-colors">
           <X size={15} />

@@ -11,6 +11,7 @@ import { fileToBase64 } from '@/lib/utils'
 import { THEME_LABELS, type Theme } from '@/lib/theme'
 import { cn } from '@/lib/utils'
 import type { AIProvider } from '@/lib/ai/types'
+import type { Identity } from '@/lib/costPerspective'
 
 const PROVIDERS: { value: AIProvider; label: string }[] = [
   { value: 'qwen',   label: '通义千问' },
@@ -26,6 +27,10 @@ export function Settings() {
   const [apiKey,   setApiKey]   = useState(store.aiApiKey)
   const [cooldown, setCooldown] = useState(String(store.cooldownHours))
   const [timer,    setTimer]    = useState(String(store.timerMinutes))
+  const [identity,   setIdentity]   = useState<Identity>(store.identity)
+  const [income,     setIncome]     = useState(store.monthlyIncome != null ? String(store.monthlyIncome) : '')
+  const [foodBudget, setFoodBudget] = useState(store.monthlyFoodBudget != null ? String(store.monthlyFoodBudget) : '')
+  const [workHours,  setWorkHours]  = useState(store.dailyWorkHours != null ? String(store.dailyWorkHours) : '')
   const [saving,   setSaving]   = useState(false)
   const [saved,    setSaved]    = useState(false)
 
@@ -34,13 +39,26 @@ export function Settings() {
     setProvider(store.aiProvider); setModel(store.aiModel)
     setApiKey(store.aiApiKey); setCooldown(String(store.cooldownHours))
     setTimer(String(store.timerMinutes))
+    setIdentity(store.identity)
+    setIncome(store.monthlyIncome != null ? String(store.monthlyIncome) : '')
+    setFoodBudget(store.monthlyFoodBudget != null ? String(store.monthlyFoodBudget) : '')
+    setWorkHours(store.dailyWorkHours != null ? String(store.dailyWorkHours) : '')
   }, [store.loaded]) // eslint-disable-line react-hooks/exhaustive-deps
 
   function handleProviderChange(p: AIProvider) { setProvider(p); setModel(DEFAULT_MODELS[p]) }
 
   async function handleSave() {
     setSaving(true)
-    await store.update({ aiProvider: provider, aiModel: model, aiApiKey: apiKey, cooldownHours: Number(cooldown) || 72, timerMinutes: Number(timer) || 15 })
+    const num = (s: string) => { const n = Number(s); return s.trim() && n > 0 ? n : null }
+    await store.update({
+      aiProvider: provider, aiModel: model, aiApiKey: apiKey,
+      cooldownHours: Number(cooldown) || 72, timerMinutes: Number(timer) || 15,
+      identity,
+      // keep only the fields relevant to the chosen identity
+      monthlyIncome:     identity ? num(income) : null,
+      monthlyFoodBudget: identity === 'student' ? num(foodBudget) : null,
+      dailyWorkHours:    identity === 'worker' ? num(workHours) : null,
+    })
     setSaving(false); setSaved(true); setTimeout(() => setSaved(false), 2000)
   }
 
@@ -127,6 +145,73 @@ export function Settings() {
             <Input type="number" value={timer} onChange={(e) => setTimer(e.target.value)} className="w-24" min={1} max={120} />
             <span className="text-[15px] text-ink-3">分钟（执行层下单前的强制冷静计时，默认 15min）</span>
           </div>
+        </CardContent>
+      </Card>
+
+      {/* ── Cost perspective (代价视角) ── */}
+      <Card>
+        <CardHeader><CardTitle>代价视角</CardTitle></CardHeader>
+        <CardContent className="flex flex-col gap-4">
+          <p className="text-[13px] leading-relaxed text-ink-4">
+            选择身份后，待购清单和冲动卡片会把金额换算成你有感的代价（如「11 天伙食费」「工作 3 小时」）。不填则不显示。
+          </p>
+
+          <div className="flex gap-2">
+            {([
+              { value: null,      label: '不开启' },
+              { value: 'student', label: '🎓 学生' },
+              { value: 'worker',  label: '💼 工作党' },
+            ] as { value: Identity; label: string }[]).map((opt) => (
+              <button
+                key={String(opt.value)}
+                onClick={() => setIdentity(opt.value)}
+                className={cn(
+                  'flex-1 rounded-lg border-theme px-3 py-2 text-[13px] font-medium transition-colors',
+                  identity === opt.value ? 'bg-accent text-on-accent' : 'text-ink-3 hover:bg-card-alt hover:text-ink-2',
+                )}
+              >
+                {opt.label}
+              </button>
+            ))}
+          </div>
+
+          {identity === 'student' && (
+            <>
+              <div>
+                <label className="mb-2 block text-[13px] text-ink-3">月生活费</label>
+                <div className="flex items-center gap-3">
+                  <Input type="number" value={income} onChange={(e) => setIncome(e.target.value)} className="w-32" min={0} placeholder="¥" />
+                  <span className="text-[13px] text-ink-4">元 / 月</span>
+                </div>
+              </div>
+              <div>
+                <label className="mb-2 block text-[13px] text-ink-3">月伙食费</label>
+                <div className="flex items-center gap-3">
+                  <Input type="number" value={foodBudget} onChange={(e) => setFoodBudget(e.target.value)} className="w-32" min={0} placeholder="¥" />
+                  <span className="text-[13px] text-ink-4">元 / 月</span>
+                </div>
+              </div>
+            </>
+          )}
+
+          {identity === 'worker' && (
+            <>
+              <div>
+                <label className="mb-2 block text-[13px] text-ink-3">月薪</label>
+                <div className="flex items-center gap-3">
+                  <Input type="number" value={income} onChange={(e) => setIncome(e.target.value)} className="w-32" min={0} placeholder="¥" />
+                  <span className="text-[13px] text-ink-4">元 / 月</span>
+                </div>
+              </div>
+              <div>
+                <label className="mb-2 block text-[13px] text-ink-3">日工作时长</label>
+                <div className="flex items-center gap-3">
+                  <Input type="number" value={workHours} onChange={(e) => setWorkHours(e.target.value)} className="w-32" min={1} max={24} step={0.5} placeholder="8" />
+                  <span className="text-[13px] text-ink-4">小时 / 天</span>
+                </div>
+              </div>
+            </>
+          )}
         </CardContent>
       </Card>
 

@@ -3,6 +3,7 @@ import { supabase } from '@/lib/supabase'
 import { createAdapter, DEFAULT_MODELS } from '@/lib/ai/factory'
 import { applyTheme, type Theme } from '@/lib/theme'
 import type { AIAdapter, AIProvider } from '@/lib/ai/types'
+import type { Identity } from '@/lib/costPerspective'
 
 interface Settings {
   cooldownHours: number
@@ -11,6 +12,11 @@ interface Settings {
   aiModel: string
   aiApiKey: string
   theme: Theme
+  // 代价视角 identity profile
+  identity: Identity
+  monthlyIncome: number | null
+  monthlyFoodBudget: number | null
+  dailyWorkHours: number | null
 }
 
 interface SettingsStore extends Settings {
@@ -27,6 +33,10 @@ const DEFAULTS: Settings = {
   aiModel: 'qwen-vl-plus',
   aiApiKey: '',
   theme: 'warm',
+  identity: null,
+  monthlyIncome: null,
+  monthlyFoodBudget: null,
+  dailyWorkHours: null,
 }
 
 // Apply persisted theme immediately (before Supabase loads)
@@ -54,6 +64,10 @@ export const useSettingsStore = create<SettingsStore>((set, get) => ({
       aiModel:       data.ai_model ?? DEFAULTS.aiModel,
       aiApiKey:      data.ai_api_key ?? '',
       theme:         (data.theme as Theme) ?? DEFAULTS.theme,
+      identity:          (data.identity as Identity) ?? null,
+      monthlyIncome:     data.monthly_income ?? null,
+      monthlyFoodBudget: data.monthly_food_budget ?? null,
+      dailyWorkHours:    data.daily_work_hours ?? null,
     }
 
     applyTheme(settings.theme)
@@ -84,6 +98,10 @@ export const useSettingsStore = create<SettingsStore>((set, get) => ({
       ai_model:       next.aiModel,
       ai_api_key:     next.aiApiKey || null,
       theme:          next.theme,
+      identity:            next.identity,
+      monthly_income:      next.monthlyIncome,
+      monthly_food_budget: next.monthlyFoodBudget,
+      daily_work_hours:    next.dailyWorkHours,
       updated_at:     new Date().toISOString(),
     }
 

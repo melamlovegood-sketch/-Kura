@@ -1,5 +1,5 @@
 import { create } from 'zustand'
-import { persist } from 'zustand/middleware'
+import { persist, createJSONStorage } from 'zustand/middleware'
 import { supabase } from '@/lib/supabase'
 import type { ParsedWishlistItem, WishlistItem } from '@/types/db'
 
@@ -103,5 +103,6 @@ export const useWishlistStore = create<WishlistStore>()(persist((set, get) => ({
   },
 }), {
   name: 'kura-wishlist',
+  storage: createJSONStorage(() => localStorage),
   partialize: (s) => ({ items: s.items }),
 }))

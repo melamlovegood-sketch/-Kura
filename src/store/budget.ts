@@ -1,5 +1,5 @@
 import { create } from 'zustand'
-import { persist } from 'zustand/middleware'
+import { persist, createJSONStorage } from 'zustand/middleware'
 import { supabase } from '@/lib/supabase'
 import type { BudgetData } from '@/types/db'
 
@@ -58,6 +58,7 @@ export const useBudgetStore = create<BudgetStore>()(persist((set) => ({
   },
 }), {
   name: 'kura-budget',
+  storage: createJSONStorage(() => localStorage),
   // Cache only the data; `loading` is always transient.
   partialize: (s) => ({ data: s.data }),
 }))

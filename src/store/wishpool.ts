@@ -1,5 +1,5 @@
 import { create } from 'zustand'
-import { persist } from 'zustand/middleware'
+import { persist, createJSONStorage } from 'zustand/middleware'
 import { supabase } from '@/lib/supabase'
 import type { WishPoolData } from '@/types/db'
 
@@ -52,5 +52,6 @@ export const useWishPoolStore = create<WishPoolStore>()(persist((set, get) => ({
   },
 }), {
   name: 'kura-wishpool',
+  storage: createJSONStorage(() => localStorage),
   partialize: (s) => ({ pool: s.pool }),
 }))

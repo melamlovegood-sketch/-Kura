@@ -9,7 +9,12 @@ export default defineConfig({
     react(),
     tailwindcss(),
     VitePWA({
+      // New SW takes over automatically — no manual refresh needed.
       registerType: 'autoUpdate',
+      // We register the SW ourselves in main.tsx so we can also poll for
+      // updates on visibilitychange (critical for installed/home-screen PWAs
+      // that are resumed from background rather than cold-started).
+      injectRegister: false,
       includeAssets: ['favicon.ico', 'icons/*.png'],
       manifest: {
         name: 'Kura 蔵',
@@ -29,6 +34,11 @@ export default defineConfig({
       },
       workbox: {
         globPatterns: ['**/*.{js,css,html,ico,png,svg}'],
+        // Take control of open pages immediately and purge stale precaches,
+        // so an updated SW never serves an old index.html / JS bundle.
+        clientsClaim: true,
+        skipWaiting: true,
+        cleanupOutdatedCaches: true,
         runtimeCaching: [
           {
             urlPattern: /^https:\/\/.*\.supabase\.co\/.*/i,

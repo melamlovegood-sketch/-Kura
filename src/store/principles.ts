@@ -1,5 +1,5 @@
 import { create } from 'zustand'
-import { persist } from 'zustand/middleware'
+import { persist, createJSONStorage } from 'zustand/middleware'
 import { supabase } from '@/lib/supabase'
 
 export interface Principle {
@@ -53,5 +53,6 @@ export const usePrinciplesStore = create<PrinciplesStore>()(persist((set, get) =
   },
 }), {
   name: 'kura-principles',
+  storage: createJSONStorage(() => localStorage),
   partialize: (s) => ({ items: s.items }),
 }))

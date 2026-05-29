@@ -1,5 +1,5 @@
 import { create } from 'zustand'
-import { persist } from 'zustand/middleware'
+import { persist, createJSONStorage } from 'zustand/middleware'
 import { supabase } from '@/lib/supabase'
 import type { ImpulseRecord, ParsedImpulse } from '@/types/db'
 
@@ -83,5 +83,6 @@ export const useImpulseStore = create<ImpulseStore>()(persist((set, get) => ({
   },
 }), {
   name: 'kura-impulse',
+  storage: createJSONStorage(() => localStorage),
   partialize: (s) => ({ items: s.items }),
 }))

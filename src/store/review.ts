@@ -1,5 +1,5 @@
 import { create } from 'zustand'
-import { persist } from 'zustand/middleware'
+import { persist, createJSONStorage } from 'zustand/middleware'
 import { supabase } from '@/lib/supabase'
 import { useExecutionStore } from './execution'
 
@@ -95,5 +95,6 @@ export const useReviewStore = create<ReviewStore>()(persist((set, get) => ({
   },
 }), {
   name: 'kura-review',
+  storage: createJSONStorage(() => localStorage),
   partialize: (s) => ({ pendingTasks: s.pendingTasks }),
 }))

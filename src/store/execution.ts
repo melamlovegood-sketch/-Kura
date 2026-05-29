@@ -1,5 +1,5 @@
 import { create } from 'zustand'
-import { persist } from 'zustand/middleware'
+import { persist, createJSONStorage } from 'zustand/middleware'
 import { supabase } from '@/lib/supabase'
 
 export interface BrandEntry {
@@ -103,5 +103,6 @@ export const useExecutionStore = create<ExecutionStore>()(persist((set, get) => 
   },
 }), {
   name: 'kura-execution',
+  storage: createJSONStorage(() => localStorage),
   partialize: (s) => ({ brands: s.brands, sopRules: s.sopRules }),
 }))

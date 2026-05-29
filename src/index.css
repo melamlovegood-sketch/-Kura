@@ -76,6 +76,7 @@
 @utility border-t-theme { border-top: 0.5px solid var(--border); }
 @utility border-b-theme { border-bottom: 0.5px solid var(--border); }
 @utility border-l-theme { border-left: 0.5px solid var(--border); }
+@utility border-r-theme { border-right: 0.5px solid var(--border); }
 /* divide-theme: apply border-t-theme to each item manually */
 
 /* ─── Base styles ─────────────────────────────────────────────────────────── */
@@ -118,6 +119,81 @@ input[type='date']::-webkit-calendar-picker-indicator {
   opacity: 0.3;
   cursor: pointer;
   filter: invert(0.5);
+}
+
+/* ─── Splash screen ─────────────────────────────────────────────────────────── */
+
+@keyframes splash-acorn-drop {
+  0%   { transform: translateY(-80px); animation-timing-function: cubic-bezier(0.55, 0, 1, 0.45); }
+  62%  { transform: translateY(0px);   animation-timing-function: ease-out; }
+  73%  { transform: translateY(-10px); animation-timing-function: ease-in; }
+  83%  { transform: translateY(0px);   animation-timing-function: ease-out; }
+  91%  { transform: translateY(-4px);  animation-timing-function: ease-in; }
+  100% { transform: translateY(0px); }
+}
+
+@keyframes splash-sq-reach {
+  0%   { transform: rotate(0deg); }
+  40%  { transform: rotate(-7deg); }
+  100% { transform: rotate(0deg); }
+}
+
+@keyframes splash-fade-up {
+  from { opacity: 0; transform: translateY(14px); }
+  to   { opacity: 1; transform: translateY(0); }
+}
+
+@keyframes splash-fade-in {
+  from { opacity: 0; }
+  to   { opacity: 1; }
+}
+
+.splash-acorn {
+  animation: splash-acorn-drop 0.8s linear 0.2s both;
+}
+
+.splash-sq-body {
+  transform-box: fill-box;
+  transform-origin: 50% 90%;
+  animation: splash-sq-reach 0.65s ease-in-out 0.75s both;
+}
+
+.splash-kura {
+  font-family: 'DM Serif Display', Georgia, serif;
+  font-size: 64px;
+  line-height: 1;
+  color: #3C3028;
+  letter-spacing: -0.01em;
+  margin-top: 8px;
+  animation: splash-fade-up 0.45s ease-out 1.05s both;
+}
+
+.splash-tagline {
+  font-family: 'DM Serif Display', Georgia, serif;
+  font-style: italic;
+  font-size: 16px;
+  color: #5C5448;
+  margin-top: 6px;
+  animation: splash-fade-in 0.4s ease-out 1.4s both;
+}
+
+.splash-label {
+  font-family: 'DM Sans', sans-serif;
+  font-size: 10px;
+  font-weight: 400;
+  letter-spacing: 0.12em;
+  text-transform: uppercase;
+  color: #9C9080;
+  margin-top: 14px;
+  animation: splash-fade-in 0.4s ease-out 1.7s both;
+}
+
+.splash-credit {
+  font-family: 'DM Sans', sans-serif;
+  font-size: 12px;
+  font-weight: 300;
+  color: #C8BFB0;
+  animation: splash-fade-in 0.35s ease-out 2.0s both;
 }
 
 /* ─── Suppress browser-extension floating overlays ───────────────────────── */

@@ -14,12 +14,11 @@ export function AppLayout({ children }: { children: ReactNode }) {
   const { pathname } = useLocation()
 
   return (
-    <div className="flex h-full">
-      {/* ── Desktop sidebar (md+) ────────────────────────────────── */}
-      <aside className="hidden md:flex w-[220px] shrink-0 flex-col bg-card border-r-theme">
-        {/* Wordmark */}
-        <div className="flex flex-col items-center px-5 pt-8 pb-5 gap-2">
-          <SquirrelMark />
+    <div className="flex h-full flex-col">
+      {/* ── Desktop top bar (md+) ─────────────────────────────── */}
+      <header className="hidden md:flex fixed top-0 left-0 right-0 z-50 h-[52px] items-center justify-center bg-page border-b-theme">
+        <div className="flex items-center gap-2.5">
+          <SquirrelMark small />
           <span
             style={{
               fontFamily: "'DM Serif Display', Georgia, serif",
@@ -32,29 +31,16 @@ export function AppLayout({ children }: { children: ReactNode }) {
             KURA
           </span>
         </div>
-        <div className="border-b-theme mx-5 mb-3" />
-        {/* Vertical nav */}
-        <nav className="flex flex-col gap-0.5 px-3">
-          {NAV_ITEMS.map(({ to, Icon, label }) => (
-            <SideNavItem
-              key={to}
-              to={to}
-              icon={<Icon size={17} />}
-              label={label}
-              active={pathname === to}
-            />
-          ))}
-        </nav>
-      </aside>
+      </header>
 
-      {/* ── Main content ─────────────────────────────────────────── */}
-      <main className="flex-1 overflow-y-auto bg-page pb-20 md:pb-0 flex justify-center">
-        <div className="w-full max-w-[480px] md:max-w-[600px]">
+      {/* ── Main content ──────────────────────────────────────── */}
+      <main className="flex-1 overflow-y-auto bg-page pb-20 md:pt-[52px] md:pb-[60px] flex justify-center">
+        <div className="w-full max-w-[480px] md:max-w-[640px] md:pt-9">
           {children}
         </div>
       </main>
 
-      {/* ── Mobile bottom nav (< md) ─────────────────────────────── */}
+      {/* ── Mobile bottom nav (<md) ───────────────────────────── */}
       <nav className="fixed bottom-0 left-0 right-0 z-40 border-t-theme bg-card md:hidden">
         <div className="flex max-w-[480px] mx-auto">
           {NAV_ITEMS.map(({ to, Icon, label }) => (
@@ -68,23 +54,34 @@ export function AppLayout({ children }: { children: ReactNode }) {
           ))}
         </div>
       </nav>
+
+      {/* ── Desktop bottom nav (md+) ──────────────────────────── */}
+      <nav className="hidden md:flex fixed bottom-0 left-0 right-0 z-40 border-t-theme bg-page justify-center gap-10 py-3">
+        {NAV_ITEMS.map(({ to, Icon, label }) => (
+          <DesktopNavItem
+            key={to}
+            to={to}
+            icon={<Icon size={20} />}
+            label={label}
+            active={pathname === to}
+          />
+        ))}
+      </nav>
     </div>
   )
 }
 
-/* ── Sidebar nav item ─────────────────────────────────────────────────── */
+/* ── Desktop nav item ─────────────────────────────────────────────────── */
 
-function SideNavItem({ to, icon, label, active }: {
+function DesktopNavItem({ to, icon, label, active }: {
   to: string; icon: ReactNode; label: string; active: boolean
 }) {
   return (
     <Link
       to={to}
       className={cn(
-        'flex items-center gap-3 px-3 py-2.5 rounded-lg text-sm font-medium transition-colors',
-        active
-          ? 'text-ink bg-card-alt'
-          : 'text-ink-3 hover:text-ink-2 hover:bg-card-alt',
+        'flex flex-col items-center gap-1 text-[12px] font-medium transition-colors',
+        active ? 'text-ink' : 'text-ink-3 hover:text-ink-2',
       )}
     >
       {icon}
@@ -93,7 +90,7 @@ function SideNavItem({ to, icon, label, active }: {
   )
 }
 
-/* ── Bottom nav item ──────────────────────────────────────────────────── */
+/* ── Mobile bottom nav item ───────────────────────────────────────────── */
 
 function BottomNavItem({ to, icon, label, active }: {
   to: string; icon: ReactNode; label: string; active: boolean
@@ -112,13 +109,13 @@ function BottomNavItem({ to, icon, label, active }: {
   )
 }
 
-/* ── Squirrel + acorn mark for sidebar ───────────────────────────────── */
+/* ── Squirrel mark ────────────────────────────────────────────────────── */
 
-function SquirrelMark() {
+function SquirrelMark({ small = false }: { small?: boolean }) {
   return (
     <svg
-      width="54"
-      height="59"
+      width={small ? 26 : 54}
+      height={small ? 28 : 59}
       viewBox="0 0 150 165"
       fill="none"
       className="text-ink-2"

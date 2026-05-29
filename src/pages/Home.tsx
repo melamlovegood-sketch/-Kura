@@ -159,10 +159,10 @@ export function Home() {
         <Card><p className="text-sm text-ink-3">{lastResult.display_text}</p></Card>
       )}
 
-      <div className="h-4" />
+      <div className="h-4 md:h-[80px]" />
 
-      {/* Dialog bar — same centering as AppLayout nav */}
-      <div className="fixed bottom-14 left-1/2 z-30 w-full max-w-[480px] -translate-x-1/2 border-t-theme bg-card px-6 py-3">
+      {/* Dialog bar */}
+      <div className="fixed bottom-14 md:bottom-[60px] left-1/2 z-30 w-full max-w-[480px] md:max-w-[640px] -translate-x-1/2 border-t-theme bg-card md:bg-page px-6 py-3">
         {image && (
           <div className="mb-2 flex items-center gap-2">
             <span className="max-w-[200px] truncate text-xs text-ink-4">{image.file.name}</span>

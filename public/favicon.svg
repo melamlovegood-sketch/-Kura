@@ -1,0 +1,9 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 64 64" fill="none">
+  <rect width="64" height="64" rx="15" fill="#C97B5A"/>
+  <!-- acorn nut -->
+  <path d="M18 31C18 46 24 54 32 54C40 54 46 46 46 31Z" fill="#F4E9D8"/>
+  <!-- acorn cap -->
+  <path d="M16 30C16 22 23 17 32 17C41 17 48 22 48 30C48 31.5 47 32 45 32H19C17 32 16 31.5 16 30Z" fill="#5C4632"/>
+  <!-- stem -->
+  <rect x="30.5" y="11" width="3" height="7" rx="1.5" fill="#5C4632"/>
+</svg>

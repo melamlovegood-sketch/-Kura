@@ -15,7 +15,7 @@ export default defineConfig({
       // updates on visibilitychange (critical for installed/home-screen PWAs
       // that are resumed from background rather than cold-started).
       injectRegister: false,
-      includeAssets: ['favicon.ico', 'icons/*.png'],
+      includeAssets: ['favicon.svg', 'icons/*.png'],
       manifest: {
         name: 'Kura 蔵',
         short_name: 'Kura',

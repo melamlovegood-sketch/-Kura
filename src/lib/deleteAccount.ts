@@ -1,11 +1,13 @@
 /**
- * 账号注销 — permanent deletion of all of the signed-in user's data.
+ * 账号注销 — permanent deletion of the signed-in user's data AND auth account.
  *
- * Without a service-role key the client cannot remove the `auth.users` row itself,
- * but it CAN delete every owned row: each app table has a `user_id` column under an
- * RLS "user_own" policy, so a scoped DELETE wipes exactly this user's data and
- * nothing else. We then sign out and reload to the login gate. (Re-registering the
- * same email lands a clean, empty account.)
+ * Two steps:
+ *   1. Client-side per-table DELETE (RLS-scoped by user_id) — wipes the data rows
+ *      immediately and keeps注销 working even before the Edge Function is deployed.
+ *   2. The `delete-account` Edge Function (service-role) removes the `auth.users`
+ *      row itself, which the client cannot do directly. Its ON DELETE CASCADE also
+ *      covers any rows step 1 missed.
+ * Then sign out and reload to the login gate.
  */
 import { supabase } from '@/lib/supabase'
 import { clearGuestData, setGuestModeFlag } from '@/lib/guestMode'
@@ -36,6 +38,7 @@ function clearLocalAppState(): void {
  * does NOT sign out, so the user can retry without a half-deleted account).
  */
 export async function deleteAccount(userId: string): Promise<void> {
+  // ── 1. Delete owned data rows ──
   for (const table of USER_TABLES) {
     const { error } = await supabase.from(table).delete().eq('user_id', userId)
     // A table that doesn't exist in this deployment is fine to skip; anything else
@@ -45,6 +48,17 @@ export async function deleteAccount(userId: string): Promise<void> {
     }
   }
 
+  // ── 2. Delete the auth account itself (service-role Edge Function) ──
+  // invoke() forwards the session JWT as the Authorization header; the function
+  // derives the user id from it and calls auth.admin.deleteUser. If the function
+  // isn't deployed (or errors), the data is already gone from step 1 — log it and
+  // still sign out rather than trapping the user in a half-deleted account.
+  const { error: fnError } = await supabase.functions.invoke('delete-account', { method: 'POST' })
+  if (fnError) {
+    console.warn('[delete-account] auth user not removed:', fnError.message)
+  }
+
+  // ── 3. Local cleanup + back to the login gate ──
   await supabase.auth.signOut()
   clearLocalAppState()
   window.location.reload()

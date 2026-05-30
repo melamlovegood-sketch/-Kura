@@ -11,10 +11,19 @@ import { usePriceTrackStore } from '@/store/priceTrack'
 import { useAchievementsStore } from '@/store/achievements'
 import { parseProduct, type ParsedProduct } from '@/lib/parseProduct'
 import { parsePriceTrack } from '@/lib/parsePriceTrack'
+import { parseBudgetUpdate } from '@/lib/parseBudgetUpdate'
+import { useBudgetStore } from '@/store/budget'
 import { fileToBase64, formatAmount } from '@/lib/utils'
+import type { BudgetData, CategoryMain, ParsedBudgetUpdate } from '@/types/db'
 
 type Product = ParsedProduct
-type Exit = 'impulse' | 'wishlist' | 'buy' | 'track'
+type Exit = 'impulse' | 'wishlist' | 'buy' | 'track' | 'budget'
+
+function budgetCurrentLabel(data: BudgetData | null, scope: CategoryMain): string {
+  if (!data) return '未设置'
+  const v = scope === 'basic_life' ? data.basic_life_limit : data.discretionary_limit
+  return v != null ? formatAmount(v) : '未设置'
+}
 
 /**
  * The single bottom-sheet entry behind the home "我现在想买……" button. Reuses the
@@ -35,6 +44,7 @@ export function BuyDrawer({ onClose }: { onClose: () => void }) {
   const wishlistStore = useWishlistStore()
   const wishPoolStore = useWishPoolStore()
   const priceTrackStore = usePriceTrackStore()
+  const budgetStore = useBudgetStore()
 
   const [text, setText] = useState('')
   const [image, setImage] = useState<{ file: File; base64: string } | null>(null)
@@ -48,10 +58,15 @@ export function BuyDrawer({ onClose }: { onClose: () => void }) {
   // 「忍住」确认框：是否展开 + 忍住的金额（从输入正则预填，可改）。
   const [holdOpen, setHoldOpen] = useState(false)
   const [holdAmount, setHoldAmount] = useState(0)
+  const [budgetDraft, setBudgetDraft] = useState<ParsedBudgetUpdate | null>(null)
   const abortRef = useRef<AbortController | null>(null)
   const fileRef = useRef<HTMLInputElement>(null)
 
   const hasInput = !!text.trim() || !!image
+
+  const looksLikeBudget =
+    !image &&
+    (/(预算|额度|上限)/.test(text) || (/(限|改成|调到|设为|调整)/.test(text) && /\d/.test(text)))
 
   function handleFileSelect(base64: string, file: File) {
     setImage({ file, base64 })
@@ -196,6 +211,38 @@ export function BuyDrawer({ onClose }: { onClose: () => void }) {
     }
   }
 
+  // 一句话改预算（功能5）：解析→确认卡→写库。
+  async function handleBudget() {
+    if (busy) return
+    if (!adapter) { setError('请先在设置里填写 API Key'); return }
+    setBusy('budget'); setError(null); setNotice(null)
+    abortRef.current?.abort()
+    const ctrl = new AbortController()
+    abortRef.current = ctrl
+    try {
+      const upd = await parseBudgetUpdate(adapter, text, ctrl.signal)
+      if (!upd) { setError('没识别出要改哪项预算，试试「可支配预算改成1500」'); return }
+      setBudgetDraft(upd)
+    } catch (err) {
+      if ((err as Error).name !== 'AbortError') setError(`出错了：${(err as Error).message || '请稍后重试'}`)
+    } finally {
+      setBusy(null)
+    }
+  }
+
+  async function handleBudgetConfirm() {
+    if (!budgetDraft || busy) return
+    setBusy('budget')
+    try {
+      await budgetStore.updateLimit(budgetDraft.scope, budgetDraft.limit)
+      onClose()
+    } catch (err) {
+      setError(`出错了：${(err as Error).message || '请稍后重试'}`)
+    } finally {
+      setBusy(null)
+    }
+  }
+
   return (
     <div
       className="fixed inset-0 z-50 flex items-end justify-center bg-black/30"
@@ -215,7 +262,7 @@ export function BuyDrawer({ onClose }: { onClose: () => void }) {
 
         <textarea
           value={text}
-          onChange={(e) => { setText(e.target.value); setParsed(null); setError(null); setNotice(null) }}
+          onChange={(e) => { setText(e.target.value); setParsed(null); setError(null); setNotice(null); setBudgetDraft(null) }}
           placeholder="说一句话，或拖拽截图到这里…"
           rows={2}
           autoFocus
@@ -258,38 +305,63 @@ export function BuyDrawer({ onClose }: { onClose: () => void }) {
         {error && <p className="mt-3 text-[13px] text-red-500">{error}</p>}
         {notice && <p className="mt-3 text-[13px] text-emerald-600">{notice}</p>}
 
-        {/* Three user-chosen exits (bug8) — the app no longer forces a cooldown. */}
-        <div className="mt-5 flex flex-col gap-2.5">
-          <Button
-            variant="outline"
-            onClick={() => handleImpulse()}
-            disabled={!hasInput || !!busy}
-          >
-            忍住，先忍忍
-          </Button>
-          <Button
-            variant="outline"
-            onClick={() => void handleWishlist()}
-            disabled={!hasInput || !!busy}
-          >
-            {busy === 'wishlist' ? '分析中…' : '加进清单再想想'}
-          </Button>
-          <Button
-            onClick={() => void handleBuy()}
-            disabled={!hasInput || !!busy}
-          >
-            {busy === 'buy' ? '分析中…' : '确定要买，记一笔 →'}
-          </Button>
+        {budgetDraft ? (
+          <div className="mt-5 flex flex-col gap-3 rounded-xl border-theme bg-card-alt p-4">
+            <p className="text-[11px] font-medium uppercase tracking-[0.14em] text-ink-4">修改预算确认</p>
+            <p className="text-[15px] text-ink">
+              {budgetDraft.label}上限{' '}
+              <span className="font-serif text-ink-3">{budgetCurrentLabel(budgetStore.data, budgetDraft.scope)}</span>
+              {' → '}
+              <span className="font-serif text-ink">{formatAmount(budgetDraft.limit)}</span>
+            </p>
+            <div className="flex justify-end gap-2">
+              <Button variant="ghost" size="sm" onClick={() => setBudgetDraft(null)} disabled={!!busy}>取消</Button>
+              <Button size="sm" onClick={() => void handleBudgetConfirm()} disabled={!!busy}>
+                {busy === 'budget' ? '保存中…' : '确认修改'}
+              </Button>
+            </div>
+          </div>
+        ) : looksLikeBudget ? (
+          <div className="mt-5 flex flex-col gap-2.5">
+            <Button onClick={() => void handleBudget()} disabled={!hasInput || !!busy}>
+              {busy === 'budget' ? '解析中…' : '✎ 改预算'}
+            </Button>
+            <p className="text-center text-[12px] text-ink-4">看起来你想改预算 · 清空文字可回到「想买」</p>
+          </div>
+        ) : (
+          /* Three user-chosen exits (bug8) — the app no longer forces a cooldown. */
+          <div className="mt-5 flex flex-col gap-2.5">
+            <Button
+              variant="outline"
+              onClick={() => handleImpulse()}
+              disabled={!hasInput || !!busy}
+            >
+              忍住，先忍忍
+            </Button>
+            <Button
+              variant="outline"
+              onClick={() => void handleWishlist()}
+              disabled={!hasInput || !!busy}
+            >
+              {busy === 'wishlist' ? '分析中…' : '加进清单再想想'}
+            </Button>
+            <Button
+              onClick={() => void handleBuy()}
+              disabled={!hasInput || !!busy}
+            >
+              {busy === 'buy' ? '分析中…' : '确定要买，记一笔 →'}
+            </Button>
 
-          {/* 蹲一下：手动记录当前价格，持续追踪走势（不下购买决定）。 */}
-          <button
-            onClick={() => void handleTrack()}
-            disabled={!hasInput || !!busy}
-            className="mt-1 text-center text-[13px] text-ink-3 transition-colors hover:text-ink-2 disabled:opacity-40"
-          >
-            {busy === 'track' ? '分析中…' : '蹲一下价格 — 记录当前价，盯着降不降'}
-          </button>
-        </div>
+            {/* 蹲一下：手动记录当前价格，持续追踪走势（不下购买决定）。 */}
+            <button
+              onClick={() => void handleTrack()}
+              disabled={!hasInput || !!busy}
+              className="mt-1 text-center text-[13px] text-ink-3 transition-colors hover:text-ink-2 disabled:opacity-40"
+            >
+              {busy === 'track' ? '分析中…' : '蹲一下价格 — 记录当前价，盯着降不降'}
+            </button>
+          </div>
+        )}
       </ImageDropZone>
 
       {/* 忍住确认框：问「忍住了多少钱」，确认后攒进许愿池 + 记冲动，不写清单。 */}

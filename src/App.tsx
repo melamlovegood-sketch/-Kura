@@ -24,6 +24,7 @@ import { useExpiryStore } from '@/store/expiry'
 import { useSubscriptionStore } from '@/store/subscriptions'
 import { useAchievementsStore } from '@/store/achievements'
 import { usePersonaStore } from '@/store/persona'
+import { useBudgetStore } from '@/store/budget'
 import { initPushNotifications } from '@/lib/pushNotification'
 
 export function App() {
@@ -50,6 +51,8 @@ export function App() {
   const loadAchievements = useAchievementsStore((s) => s.load)
   const recomputeAch     = useAchievementsStore((s) => s.recompute)
   const generatePersona  = usePersonaStore((s) => s.generate)
+  const ensureBudgetContinuity = useBudgetStore((s) => s.ensureContinuity)
+  const loadBudgetSuggestion   = useBudgetStore((s) => s.loadSuggestion)
 
   // Boot the auth listener once.
   useEffect(() => { initAuth() }, [initAuth])
@@ -86,7 +89,9 @@ export function App() {
     void loadAchievements().then(() => recomputeAch())
     // Build last month's spending-persona report.
     void generatePersona()
-  }, [authStatus, userId, loadSettings, loadPrinciples, loadImpulse, loadWishlist, loadWishPool, loadPriceTrack, loadExecution, loadReview, loadRegret, loadStories, ensureLastMonthStory, loadExpiry, loadSubs, generateSubTx, loadAchievements, recomputeAch, generatePersona])
+    // 每月自动延续预算（功能2）：当月无预算则复制上月，然后查 AI 建议。
+    void ensureBudgetContinuity().then(() => loadBudgetSuggestion())
+  }, [authStatus, userId, loadSettings, loadPrinciples, loadImpulse, loadWishlist, loadWishPool, loadPriceTrack, loadExecution, loadReview, loadRegret, loadStories, ensureLastMonthStory, loadExpiry, loadSubs, generateSubTx, loadAchievements, recomputeAch, generatePersona, ensureBudgetContinuity, loadBudgetSuggestion])
 
   // Splash plays while it animates AND until the auth state resolves, so we never
   // flash the login screen before knowing whether a session exists.

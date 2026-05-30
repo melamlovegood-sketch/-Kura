@@ -33,6 +33,11 @@ budget（设置预算）
   data: { month: "YYYY-MM", basic_life_limit: number|null, discretionary_limit: number|null, total_income: number|null }
   示例："这个月基础生活预算500，可支配800"
 
+budget_update（改预算）— 只调整某一项预算上限（区别于 budget 的整体设置）
+  data: { scope: "basic_life"|"discretionary", limit: number, label: string }
+  scope: 把口语对象映射到两个预算桶——外卖/奶茶/网购/娱乐/其他等可支配类→discretionary；食堂/交通/日用/订阅等基础生活类→basic_life；直接说"可支配"→discretionary，"基础生活"→basic_life。label 为用户原话里的对象词(如"外卖""可支配")。
+  示例："下个月外卖限300"→{scope:"discretionary",limit:300,label:"外卖"} / "可支配预算改成1500"→{scope:"discretionary",limit:1500,label:"可支配"} / "基础生活预算800"→{scope:"basic_life",limit:800,label:"基础生活"}
+
 subscription（订阅管理）— 周期性固定订阅扣费
   data: { name: string, amount: number, billing_day: number(1-31), category: "streaming"|"tools"|"transport"|"other" }
   category: 流媒体/视频音乐会员→streaming，软件/网盘/工具→tools，出行/通勤→transport，其他→other

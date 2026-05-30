@@ -21,6 +21,8 @@ interface PriceTrackStore {
   records: Record<string, PriceRecord[]>
   /** Drop-notification keys the user has dismissed ("知道了"). Persisted. */
   dismissedDrops: string[]
+  /** Target-hit keys the user has dismissed ("知道了"). Persisted. */
+  dismissedTargets: string[]
   loaded: boolean
 
   load: () => Promise<void>
@@ -46,6 +48,10 @@ interface PriceTrackStore {
   moveToWishlist: (track_id: string) => Promise<void>
   /** Dismiss a Home price-drop card. */
   dismissDrop: (key: string) => void
+  /** 设置/清除某个蹲蹲的目标价（蹲蹲 §3）。 */
+  setTargetPrice: (track_id: string, target: number | null) => Promise<void>
+  /** Dismiss a Home target-hit card. */
+  dismissTargetHit: (key: string) => void
 }
 
 /** Newest record for a track, or null if it has none. */
@@ -67,6 +73,7 @@ export const usePriceTrackStore = create<PriceTrackStore>()(persist((set, get) =
   tracks: [],
   records: {},
   dismissedDrops: [],
+  dismissedTargets: [],
   loaded: false,
 
   load: async () => {
@@ -222,11 +229,23 @@ export const usePriceTrackStore = create<PriceTrackStore>()(persist((set, get) =
     if (get().dismissedDrops.includes(key)) return
     set({ dismissedDrops: [...get().dismissedDrops, key] })
   },
+
+  setTargetPrice: async (track_id, target) => {
+    await db.from('price_tracks').update({ target_price: target }).eq('id', track_id)
+    set({
+      tracks: get().tracks.map((t) => (t.id === track_id ? { ...t, target_price: target } : t)),
+    })
+  },
+
+  dismissTargetHit: (key) => {
+    if (get().dismissedTargets.includes(key)) return
+    set({ dismissedTargets: [...get().dismissedTargets, key] })
+  },
 }), {
   name: 'kura-price-track',
   storage: createJSONStorage(() => localStorage),
   // Persist the dismissed-drop set across reloads; tracks/records re-hydrate from DB.
-  partialize: (s) => ({ dismissedDrops: s.dismissedDrops }),
+  partialize: (s) => ({ dismissedDrops: s.dismissedDrops, dismissedTargets: s.dismissedTargets }),
 }))
 
 /**
@@ -251,3 +270,33 @@ export function activeDrops(
 }
 
 export { dropKey, latest }
+
+/** A tracked item at/under its user-set target price — worth a Home push (蹲蹲 §3). */
+export interface TargetHit {
+  track: PriceTrack
+  /** Stable key (track + newest record); dismissed per key so a new lower record re-arms it. */
+  key: string
+  current: number
+  target: number
+}
+
+/**
+ * Derive active (undismissed) target-price hits: a track whose newest record price
+ * is at or below its target_price. No target → never fires.
+ */
+export function activeTargetHits(
+  state: Pick<PriceTrackStore, 'tracks' | 'records' | 'dismissedTargets'>,
+): TargetHit[] {
+  const out: TargetHit[] = []
+  for (const track of state.tracks) {
+    if (track.target_price == null) continue
+    const recs = state.records[track.id]
+    const last = recs && recs.length > 0 ? recs[recs.length - 1] : null
+    if (!last) continue
+    if (last.price > track.target_price) continue
+    const key = dropKey(track.id, last.id)
+    if (state.dismissedTargets.includes(key)) continue
+    out.push({ track, key, current: last.price, target: track.target_price })
+  }
+  return out
+}

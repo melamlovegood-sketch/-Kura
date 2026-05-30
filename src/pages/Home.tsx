@@ -11,6 +11,7 @@ import { ExpiryReminderCard } from '@/components/transaction/ExpiryReminderCard'
 import { SubscriptionReminderCard } from '@/components/subscription/SubscriptionReminderCard'
 import { DuplicateWarningCard } from '@/components/wishlist/DuplicateWarningCard'
 import { PriceDropCard } from '@/components/home/PriceDropCard'
+import { PriceTargetCard } from '@/components/home/PriceTargetCard'
 import { BuyDrawer } from '@/components/home/BuyDrawer'
 import { useSettingsStore } from '@/store/settings'
 import { useAuthStore } from '@/store/auth'
@@ -24,6 +25,8 @@ import { formatMonth } from '@/lib/utils'
 import type { WishlistItem } from '@/types/db'
 
 const STORY_NUDGE_DISMISSED_KEY = 'kura-story-nudge-dismissed'
+
+const NUDGE_DAYS = 60
 
 export function Home() {
   const budgetStore   = useBudgetStore()
@@ -45,8 +48,11 @@ export function Home() {
   const nudgeItem = !expiredImpulse
     ? wishlistStore.items.find((i) => {
         if (i.status !== 'active') return false
+        // 必须在清单里躺够 60 天
+        if ((Date.now() - new Date(i.added_at).getTime()) / 86400000 < NUDGE_DAYS) return false
+        // 提醒过一次后 60 天内不再打扰（保留会重置 last_nudged_at 计时）
         if (!i.last_nudged_at) return true
-        return (Date.now() - new Date(i.last_nudged_at).getTime()) / 86400000 >= 7
+        return (Date.now() - new Date(i.last_nudged_at).getTime()) / 86400000 >= NUDGE_DAYS
       }) ?? null
     : null
 
@@ -56,11 +62,13 @@ export function Home() {
       <GuestModeBanner />
       <NoApiKeyBanner />
       <BudgetCard />
+      <BudgetSuggestionCard />
       <WishPoolCard />
 
       <DuplicateWarningCard />
       <WishPoolReachedCard />
       <PriceDropCard />
+      <PriceTargetCard />
       <SubscriptionReminderCard />
       <ExpiryReminderCard />
       {expiredImpulse && <ImpulseExpiredCard record={expiredImpulse} onApprove={handleImpulseApprove} onDismiss={(id) => impulseStore.dismiss(id)} />}
@@ -85,6 +93,33 @@ export function Home() {
       </div>
 
       {drawerOpen && <BuyDrawer onClose={() => setDrawerOpen(false)} />}
+    </div>
+  )
+}
+
+/**
+ * 预算自动延续后的轻量提示（功能2）：当存在一条针对本月、status=pending 的 AI 预算
+ * 建议时，推一条可忽略的卡片；点正文进账单页，点「忽略」标记 dismissed。无建议时不渲染。
+ */
+function BudgetSuggestionCard() {
+  const navigate = useNavigate()
+  const suggestion = useBudgetStore((s) => s.suggestion)
+  const dismiss = useBudgetStore((s) => s.dismissSuggestion)
+  if (!suggestion) return null
+  return (
+    <div className="flex items-center justify-between gap-3 rounded-[10px] border-theme bg-card px-4 py-3">
+      <button
+        onClick={() => navigate('/billing')}
+        className="flex-1 text-left text-[14px] text-ink transition-colors hover:text-ink-2"
+      >
+        ✦ AI 建议微调下月预算，点击查看
+      </button>
+      <button
+        onClick={() => void dismiss()}
+        className="shrink-0 text-[12px] text-ink-4 transition-colors hover:text-ink-3"
+      >
+        忽略
+      </button>
     </div>
   )
 }

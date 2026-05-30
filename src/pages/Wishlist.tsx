@@ -102,6 +102,7 @@ export function Wishlist() {
                   await wishlistStore.load()
                 }}
                 onDismiss={() => priceTrackStore.dismiss(track.id)}
+                onSetTarget={(target) => priceTrackStore.setTargetPrice(track.id, target)}
               />
             ))
           )}
@@ -249,13 +250,23 @@ function getRemainingTime(expiresAt: string): string {
  * (only with ≥2 data points), the textual price history, and the net change vs
  * the first recorded price. Two actions: 加入清单 / 不蹲了.
  */
-function TrackCard({ track, records, onAddToWishlist, onDismiss }: {
+function TrackCard({ track, records, onAddToWishlist, onDismiss, onSetTarget }: {
   track: PriceTrack
   records: PriceRecord[]
   onAddToWishlist: () => Promise<void>
   onDismiss: () => void
+  onSetTarget: (target: number | null) => Promise<void>
 }) {
   const [busy, setBusy] = useState(false)
+  const [target, setTarget] = useState<string>(track.target_price != null ? String(track.target_price) : '')
+  const [savingTarget, setSavingTarget] = useState(false)
+  async function commitTarget() {
+    const val = target.trim() === '' ? null : Number(target)
+    if (val != null && (!Number.isFinite(val) || val <= 0)) return
+    if (val === (track.target_price ?? null)) return
+    setSavingTarget(true)
+    try { await onSetTarget(val) } finally { setSavingTarget(false) }
+  }
 
   const days = daysSince(track.created_at)
   const prices = records.map((r) => r.price)
@@ -307,6 +318,24 @@ function TrackCard({ track, records, onAddToWishlist, onDismiss }: {
               : `比最初高了 ${formatAmount(delta)} ↑`}
           </p>
         )}
+
+        {/* 目标价：填了之后降到该价主页提醒（蹲蹲 §3） */}
+        <div className="flex items-center gap-2 border-t-theme pt-3 text-[13px]">
+          <span className="text-ink-3">目标价</span>
+          <span className="text-ink-4">¥</span>
+          <input
+            type="number"
+            inputMode="decimal"
+            value={target}
+            onChange={(e) => setTarget(e.target.value)}
+            onBlur={() => void commitTarget()}
+            onKeyDown={(e) => { if (e.key === 'Enter') (e.target as HTMLInputElement).blur() }}
+            placeholder="设个价"
+            disabled={savingTarget}
+            className="w-20 bg-transparent border-b-theme pb-0.5 text-ink outline-none transition-colors focus:border-b-[var(--text-muted)] placeholder:text-ink-4"
+          />
+          <span className="text-ink-4">设好了降价就提醒我</span>
+        </div>
 
         <div className="mt-1 flex gap-2">
           <button

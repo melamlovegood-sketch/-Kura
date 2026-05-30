@@ -153,3 +153,18 @@ export interface ParsedPriceTrack {
   price: number | null
   platform: PricePlatform
 }
+
+export interface BudgetPlan {
+  id: string
+  month: string
+  basic_life_limit: number | null
+  discretionary_limit: number | null
+  reason: string | null
+  status: 'pending' | 'applied' | 'dismissed'
+}
+
+export interface ParsedBudgetUpdate {
+  scope: CategoryMain
+  limit: number
+  label: string
+}

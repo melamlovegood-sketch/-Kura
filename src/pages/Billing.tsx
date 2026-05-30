@@ -4,12 +4,13 @@ import { Card } from '@/components/ui/card'
 import { Button } from '@/components/ui/button'
 import { ImageDropZone } from '@/components/ui/image-drop-zone'
 import { ConfirmTransactionCard } from '@/components/transaction/ConfirmTransactionCard'
+import { ReceiptSplitCard } from '@/components/transaction/ReceiptSplitCard'
 import { SubscriptionManager } from '@/components/subscription/SubscriptionManager'
 import { useSettingsStore } from '@/store/settings'
 import { useBudgetStore } from '@/store/budget'
 import { db } from '@/lib/db'
 import { addTransaction } from '@/store/transactions'
-import { parseTransaction } from '@/lib/parseTransaction'
+import { parseTransaction, parseReceipt, isSupermarketReceipt } from '@/lib/parseTransaction'
 import { CATEGORY_META, CATEGORY_GROUPS } from '@/lib/categories'
 import { fileToBase64, formatAmount, formatMonth, cn } from '@/lib/utils'
 import { monthString } from '@/lib/generateMonthlyStory'
@@ -163,6 +164,7 @@ function AIRecordCard({ onSaved }: { onSaved: () => Promise<void> }) {
   const [text, setText] = useState('')
   const [image, setImage] = useState<{ file: File; base64: string } | null>(null)
   const [parsed, setParsed] = useState<ParsedTransaction | null>(null)
+  const [receipt, setReceipt] = useState<ParsedTransaction[] | null>(null)
   const [source, setSource] = useState<'text' | 'screenshot'>('text')
   const [busy, setBusy] = useState(false)
   const [error, setError] = useState<string | null>(null)
@@ -172,7 +174,7 @@ function AIRecordCard({ onSaved }: { onSaved: () => Promise<void> }) {
   const hasInput = !!text.trim() || !!image
 
   function pickImage(base64: string, file: File) {
-    setImage({ file, base64 }); setParsed(null); setError(null)
+    setImage({ file, base64 }); setParsed(null); setReceipt(null); setError(null)
   }
   async function onInputFile(e: React.ChangeEvent<HTMLInputElement>) {
     const file = e.target.files?.[0]
@@ -190,7 +192,15 @@ function AIRecordCard({ onSaved }: { onSaved: () => Promise<void> }) {
     abortRef.current = ctrl
     try {
       const tx = await parseTransaction(adapter, text, image?.base64, ctrl.signal)
-      setSource(image ? 'screenshot' : 'text')
+      const src = image ? 'screenshot' : 'text'
+      // 超市/便利店多品类小票 → 试着 AI 拆分成多条（功能4）。
+      if (isSupermarketReceipt(tx, text)) {
+        try {
+          const items = await parseReceipt(adapter, text, image?.base64, ctrl.signal)
+          if (items.length >= 2) { setSource(src); setReceipt(items); return }
+        } catch { /* 拆分失败 → 退回单条 */ }
+      }
+      setSource(src)
       setParsed(tx)
     } catch (err) {
       if ((err as Error).name !== 'AbortError') setError(`解析失败：${(err as Error).message || '请稍后重试'}`)
@@ -203,6 +213,23 @@ function AIRecordCard({ onSaved }: { onSaved: () => Promise<void> }) {
     await addTransaction(tx, source)
     setParsed(null); setText(''); setImage(null)
     await onSaved()
+  }
+
+  async function handleConfirmAll(txs: ParsedTransaction[]) {
+    for (const t of txs) await addTransaction(t, source)
+    setReceipt(null); setText(''); setImage(null)
+    await onSaved()
+  }
+
+  if (receipt) {
+    return (
+      <ReceiptSplitCard
+        items={receipt}
+        source={source}
+        onConfirmAll={handleConfirmAll}
+        onCancel={() => setReceipt(null)}
+      />
+    )
   }
 
   if (parsed) {
@@ -224,7 +251,7 @@ function AIRecordCard({ onSaved }: { onSaved: () => Promise<void> }) {
       <ImageDropZone onFile={pickImage} className="flex flex-col gap-2.5">
         <textarea
           value={text}
-          onChange={(e) => { setText(e.target.value); setParsed(null); setError(null) }}
+          onChange={(e) => { setText(e.target.value); setParsed(null); setReceipt(null); setError(null) }}
           placeholder="说一句话，如「中午食堂15块」，或拖拽 / 上传支付截图…"
           rows={2}
           className="w-full resize-none rounded-xl border-theme bg-card-alt px-3.5 py-2.5 text-[15px] text-ink placeholder:text-ink-4 transition-colors focus:bg-card focus:outline-none focus:ring-1 focus:ring-[var(--border)]"
@@ -234,7 +261,7 @@ function AIRecordCard({ onSaved }: { onSaved: () => Promise<void> }) {
         {image && (
           <div className="flex items-center gap-2">
             <span className="max-w-[240px] truncate text-[13px] text-ink-4">{image.file.name}</span>
-            <button onClick={() => { setImage(null); setParsed(null) }} className="text-ink-4 transition-colors hover:text-ink-3">
+            <button onClick={() => { setImage(null); setParsed(null); setReceipt(null) }} className="text-ink-4 transition-colors hover:text-ink-3">
               <X size={14} />
             </button>
           </div>

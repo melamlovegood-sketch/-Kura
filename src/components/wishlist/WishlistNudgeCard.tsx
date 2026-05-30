@@ -27,16 +27,16 @@ export function WishlistNudgeCard({ item, onKeep, onDismiss }: WishlistNudgeCard
     <Card>
       <div className="flex flex-col gap-3">
         <div>
-          <p className="text-[11px] font-medium uppercase tracking-[0.14em] text-ink-4 mb-2">你还想要吗</p>
-          <p className="text-base font-medium text-ink">{item.item_name}</p>
+          <p className="text-[11px] font-medium uppercase tracking-[0.14em] text-ink-4 mb-2">🗂 清单里的老条目</p>
+          <p className="text-base font-medium text-ink">「{item.item_name}」已在清单里躺了 {daysAgo} 天</p>
           <p className="mt-0.5 text-[13px] text-ink-4">
-            加入 {daysAgo} 天了
+            还想要吗？
             {item.estimated_price != null && <span> · 约 <span className="font-serif text-[16px]">{formatAmount(item.estimated_price)}</span></span>}
           </p>
         </div>
         <div className="flex gap-2">
-          <Button variant="outline" size="sm" className="flex-1" onClick={() => void handle('dismiss')} disabled={loading}>不想了</Button>
-          <Button size="sm" className="flex-1" onClick={() => void handle('keep')} disabled={loading}>还想要</Button>
+          <Button variant="outline" size="sm" className="flex-1" onClick={() => void handle('dismiss')} disabled={loading}>不要了，删掉</Button>
+          <Button size="sm" className="flex-1" onClick={() => void handle('keep')} disabled={loading}>还想要，保留</Button>
         </div>
       </div>
     </Card>

@@ -1,66 +1,127 @@
 import { useState } from 'react'
+import { useLocation } from 'react-router-dom'
 import { Pin, X, Clock, ChevronUp, ChevronDown } from 'lucide-react'
+import { LineChart, Line, XAxis, YAxis, Tooltip, ResponsiveContainer } from 'recharts'
 import { Card, CardContent } from '@/components/ui/card'
 import { useWishlistStore } from '@/store/wishlist'
 import { useImpulseStore } from '@/store/impulse'
 import { useWishPoolStore } from '@/store/wishpool'
+import { usePriceTrackStore } from '@/store/priceTrack'
 import { formatAmount } from '@/lib/utils'
 import { cn } from '@/lib/utils'
 import { CostLabels } from '@/components/cost/CostLabels'
 import { WorthItCard } from '@/components/wishlist/WorthItCard'
-import type { ImpulseRecord, WishlistItem } from '@/types/db'
+import type { ImpulseRecord, PricePlatform, PriceRecord, PriceTrack, WishlistItem } from '@/types/db'
 
 const SEASON_LABEL: Record<string, string> = {
   year_round: '常年', summer: '夏季', winter: '冬季', specific: '特定',
 }
 
+const PLATFORM_LABEL: Record<PricePlatform, string> = {
+  taobao: '淘宝', jd: '京东', dewu: '得物', other: '其他',
+}
+
+type Tab = 'wishlist' | 'track'
+
 export function Wishlist() {
   const wishlistStore = useWishlistStore()
   const impulseStore  = useImpulseStore()
   const wishPoolStore = useWishPoolStore()
+  const priceTrackStore = usePriceTrackStore()
+  const location = useLocation()
+
+  // Home's "去看看" on a price-drop card lands here with state.tab = 'track'.
+  const initialTab: Tab = (location.state as { tab?: Tab } | null)?.tab === 'track' ? 'track' : 'wishlist'
+  const [tab, setTab] = useState<Tab>(initialTab)
 
   const activeItems    = wishlistStore.items.filter((i) => i.status === 'active')
   const pendingImpulse = impulseStore.items.filter((i) => i.status === 'pending')
+  const tracks         = priceTrackStore.tracks
 
   return (
     <div className="flex flex-col gap-5 pt-6 w-full max-w-[640px] mx-auto px-6">
       <h1 className="text-base font-medium text-ink">清单</h1>
 
-      <section className="flex flex-col gap-3">
-        <h2 className="text-[11px] font-medium uppercase tracking-[0.14em] text-ink-4">
-          待购清单{activeItems.length > 0 && <span className="ml-1.5">· {activeItems.length}</span>}
-        </h2>
+      {/* 待购 / 蹲蹲 tabs */}
+      <div className="flex gap-1 rounded-xl bg-card-alt p-1">
+        <TabButton active={tab === 'wishlist'} onClick={() => setTab('wishlist')}>
+          待购{activeItems.length > 0 && ` · ${activeItems.length}`}
+        </TabButton>
+        <TabButton active={tab === 'track'} onClick={() => setTab('track')}>
+          蹲蹲{tracks.length > 0 && ` · ${tracks.length}`}
+        </TabButton>
+      </div>
 
-        {activeItems.length === 0 ? (
-          <Card className="py-6 text-center text-[13px] text-ink-4">还没有待购商品 — 通过对话框添加，或从冷静期通过</Card>
-        ) : (
-          activeItems.map((item, i) => (
-            <WishlistItemCard
-              key={item.id}
-              item={item}
-              isPoolFocus={wishPoolStore.pool?.focus_item_id === item.id}
-              isFirst={i === 0}
-              isLast={i === activeItems.length - 1}
-              onMoveUp={() => wishlistStore.move(item.id, 'up')}
-              onMoveDown={() => wishlistStore.move(item.id, 'down')}
-              onPin={async () => { await wishlistStore.pin(item); await wishPoolStore.load() }}
-              onDismiss={() => wishlistStore.dismiss(item.id)}
-            />
-          ))
-        )}
-      </section>
+      {tab === 'wishlist' ? (
+        <>
+          <section className="flex flex-col gap-3">
+            {activeItems.length === 0 ? (
+              <Card className="py-6 text-center text-[13px] text-ink-4">还没有待购商品 — 通过对话框添加，或从冷静期通过</Card>
+            ) : (
+              activeItems.map((item, i) => (
+                <WishlistItemCard
+                  key={item.id}
+                  item={item}
+                  isPoolFocus={wishPoolStore.pool?.focus_item_id === item.id}
+                  isFirst={i === 0}
+                  isLast={i === activeItems.length - 1}
+                  onMoveUp={() => wishlistStore.move(item.id, 'up')}
+                  onMoveDown={() => wishlistStore.move(item.id, 'down')}
+                  onPin={async () => { await wishlistStore.pin(item); await wishPoolStore.load() }}
+                  onDismiss={() => wishlistStore.dismiss(item.id)}
+                />
+              ))
+            )}
+          </section>
 
-      {pendingImpulse.length > 0 && (
+          {pendingImpulse.length > 0 && (
+            <section className="flex flex-col gap-3">
+              <h2 className="text-[11px] font-medium uppercase tracking-[0.14em] text-ink-4">
+                冷静期中 · {pendingImpulse.length}
+              </h2>
+              {pendingImpulse.map((record) => (
+                <ImpulseActiveCard key={record.id} record={record} onDismiss={() => impulseStore.dismiss(record.id)} />
+              ))}
+            </section>
+          )}
+        </>
+      ) : (
         <section className="flex flex-col gap-3">
-          <h2 className="text-[11px] font-medium uppercase tracking-[0.14em] text-ink-4">
-            冷静期中 · {pendingImpulse.length}
-          </h2>
-          {pendingImpulse.map((record) => (
-            <ImpulseActiveCard key={record.id} record={record} onDismiss={() => impulseStore.dismiss(record.id)} />
-          ))}
+          {tracks.length === 0 ? (
+            <Card className="py-6 text-center text-[13px] text-ink-4">
+              还没在蹲的商品 — 在主页对话框上传截图或输入「商品名 + 当前价」，点「蹲一下价格」
+            </Card>
+          ) : (
+            tracks.map((track) => (
+              <TrackCard
+                key={track.id}
+                track={track}
+                records={priceTrackStore.records[track.id] ?? []}
+                onAddToWishlist={async () => {
+                  await priceTrackStore.moveToWishlist(track.id)
+                  await wishlistStore.load()
+                }}
+                onDismiss={() => priceTrackStore.dismiss(track.id)}
+              />
+            ))
+          )}
         </section>
       )}
     </div>
+  )
+}
+
+function TabButton({ active, onClick, children }: { active: boolean; onClick: () => void; children: React.ReactNode }) {
+  return (
+    <button
+      onClick={onClick}
+      className={cn(
+        'flex-1 rounded-lg py-1.5 text-[13px] font-medium transition-colors',
+        active ? 'bg-card text-ink shadow-sm' : 'text-ink-4 hover:text-ink-2',
+      )}
+    >
+      {children}
+    </button>
   )
 }
 
@@ -181,4 +242,99 @@ function getRemainingTime(expiresAt: string): string {
   if (ms <= 0) return '已到期'
   const h = Math.floor(ms / 3_600_000)
   return h < 24 ? `还剩 ${h}h` : `还剩 ${Math.floor(h / 24)}天`
+}
+
+/**
+ * A single 蹲蹲 card: product + platform, days tracked, a price-trend line chart
+ * (only with ≥2 data points), the textual price history, and the net change vs
+ * the first recorded price. Two actions: 加入清单 / 不蹲了.
+ */
+function TrackCard({ track, records, onAddToWishlist, onDismiss }: {
+  track: PriceTrack
+  records: PriceRecord[]
+  onAddToWishlist: () => Promise<void>
+  onDismiss: () => void
+}) {
+  const [busy, setBusy] = useState(false)
+
+  const days = daysSince(track.created_at)
+  const prices = records.map((r) => r.price)
+  const first = prices[0]
+  const last = prices[prices.length - 1]
+  const delta = first != null && last != null ? last - first : 0
+
+  const chartData = records.map((r) => ({
+    label: formatDay(r.recorded_at),
+    price: r.price,
+  }))
+
+  return (
+    <Card>
+      <CardContent className="flex flex-col gap-3">
+        <div className="flex items-start justify-between gap-2">
+          <p className="text-[15px] font-medium text-ink leading-snug">{track.item_name}</p>
+          <span className="shrink-0 rounded border-theme px-1.5 py-0.5 text-[11px] text-ink-4">
+            {PLATFORM_LABEL[track.platform] ?? '其他'}
+          </span>
+        </div>
+        <p className="-mt-1.5 text-[12px] text-ink-4">{days === 0 ? '今天开始蹲' : `已蹲 ${days} 天`}</p>
+
+        {records.length >= 2 && (
+          <div className="h-32 w-full">
+            <ResponsiveContainer width="100%" height="100%">
+              <LineChart data={chartData} margin={{ top: 8, right: 8, bottom: 0, left: -16 }}>
+                <XAxis dataKey="label" tick={{ fontSize: 11, fill: 'var(--ink-4)' }} tickLine={false} axisLine={false} />
+                <YAxis tick={{ fontSize: 11, fill: 'var(--ink-4)' }} tickLine={false} axisLine={false} width={44} domain={['auto', 'auto']} />
+                <Tooltip
+                  formatter={(v) => [formatAmount(Number(v)), '价格']}
+                  contentStyle={{ fontSize: 12, borderRadius: 8, border: '1px solid var(--border)' }}
+                />
+                <Line type="monotone" dataKey="price" stroke="#d97706" strokeWidth={2} dot={{ r: 3 }} activeDot={{ r: 4 }} />
+              </LineChart>
+            </ResponsiveContainer>
+          </div>
+        )}
+
+        {/* Textual history — always shown; the only view when <2 points. */}
+        <p className="font-serif text-[14px] text-ink-3">
+          {prices.map((p) => formatAmount(p)).join(' → ')}
+        </p>
+
+        {delta !== 0 && (
+          <p className={cn('text-[12px] font-medium', delta < 0 ? 'text-emerald-600' : 'text-red-500')}>
+            {delta < 0
+              ? `比最初低了 ${formatAmount(-delta)} ↓`
+              : `比最初高了 ${formatAmount(delta)} ↑`}
+          </p>
+        )}
+
+        <div className="mt-1 flex gap-2">
+          <button
+            onClick={async () => { setBusy(true); try { await onAddToWishlist() } finally { setBusy(false) } }}
+            disabled={busy}
+            className="flex-1 rounded-lg border-theme bg-card-alt py-2 text-[13px] font-medium text-ink-2 transition-colors hover:text-ink disabled:opacity-50"
+          >
+            加入清单
+          </button>
+          <button
+            onClick={onDismiss}
+            disabled={busy}
+            className="flex-1 rounded-lg border-theme py-2 text-[13px] text-ink-4 transition-colors hover:text-ink-3 disabled:opacity-50"
+          >
+            不蹲了
+          </button>
+        </div>
+      </CardContent>
+    </Card>
+  )
+}
+
+function daysSince(iso: string): number {
+  return Math.floor((Date.now() - new Date(iso).getTime()) / 86_400_000)
+}
+
+/** Short "M/D" label for chart axis + tooltip. */
+function formatDay(iso: string): string {
+  const d = new Date(iso)
+  return `${d.getMonth() + 1}/${d.getDate()}`
 }

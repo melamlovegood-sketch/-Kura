@@ -47,6 +47,12 @@ principles（添加消费原则）— 用户表达消费理念，或上传文章
   data: { items: string[] }  -- 提取的原则列表，每条简洁短句（20字以内）
   示例："宁可买一件贵的也不买几件便宜货" / 上传消费理念文章截图
 
+price_track（蹲价格）— 用户记录某商品当前价格，想持续追踪（蹲蹲）
+  data: { item_name: string, price: number|null, platform: "taobao"|"jd"|"dewu"|"other" }
+  platform: 淘宝/天猫→taobao，京东→jd，得物→dewu，识别不出→other（从截图水印/界面或文字推断）
+  示例："这个499蹲一下" / "耐克跑鞋现在599" / 上传商品价格截图
+  → {item_name:"耐克跑鞋", price:599, platform:"other"}
+
 unknown（无法识别）
   data: {}
 

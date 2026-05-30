@@ -16,6 +16,7 @@ import { usePrinciplesStore } from '@/store/principles'
 import { useImpulseStore } from '@/store/impulse'
 import { useWishlistStore } from '@/store/wishlist'
 import { useWishPoolStore } from '@/store/wishpool'
+import { usePriceTrackStore } from '@/store/priceTrack'
 import { useExecutionStore } from '@/store/execution'
 import { useReviewStore } from '@/store/review'
 import { useExpiryStore } from '@/store/expiry'
@@ -35,6 +36,7 @@ export function App() {
   const loadImpulse    = useImpulseStore ((s) => s.load)
   const loadWishlist   = useWishlistStore ((s) => s.load)
   const loadWishPool   = useWishPoolStore ((s) => s.load)
+  const loadPriceTrack = usePriceTrackStore((s) => s.load)
   const loadExecution  = useExecutionStore((s) => s.load)
   const loadReview     = useReviewStore   ((s) => s.load)
   const loadRegret     = useReviewStore   ((s) => s.loadRegret)
@@ -63,6 +65,7 @@ export function App() {
     void loadImpulse()
     void loadWishlist()
     void loadWishPool()
+    void loadPriceTrack()
     void loadExecution()
     void loadReview()
     void loadRegret()
@@ -73,7 +76,7 @@ export function App() {
     void loadAchievements().then(() => recomputeAch())
     // Build last month's spending-persona report.
     void generatePersona()
-  }, [authStatus, userId, loadSettings, loadPrinciples, loadImpulse, loadWishlist, loadWishPool, loadExecution, loadReview, loadRegret, loadStories, ensureLastMonthStory, loadExpiry, loadSubs, generateSubTx, loadAchievements, recomputeAch, generatePersona])
+  }, [authStatus, userId, loadSettings, loadPrinciples, loadImpulse, loadWishlist, loadWishPool, loadPriceTrack, loadExecution, loadReview, loadRegret, loadStories, ensureLastMonthStory, loadExpiry, loadSubs, generateSubTx, loadAchievements, recomputeAch, generatePersona])
 
   // Splash plays while it animates AND until the auth state resolves, so we never
   // flash the login screen before knowing whether a session exists.

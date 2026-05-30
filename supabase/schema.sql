@@ -18,7 +18,7 @@ CREATE TYPE season_tag AS ENUM ('year_round', 'summer', 'winter', 'specific');
 
 CREATE TYPE ai_provider AS ENUM ('qwen', 'gpt', 'claude', 'gemini');
 
-CREATE TYPE price_platform AS ENUM ('jd', 'official', 'taobao_manual');
+CREATE TYPE price_platform AS ENUM ('jd', 'official', 'taobao_manual', 'taobao', 'dewu', 'other');
 
 CREATE TYPE review_type AS ENUM ('day7', 'day30');
 

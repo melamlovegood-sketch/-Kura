@@ -121,3 +121,35 @@ export interface WishPoolData {
   saved_amount: number
   completed_at: string | null
 }
+
+// ─── 蹲蹲 / price tracking ─────────────────────────────────────────────────────
+
+/** Platform a tracked price came from. AI infers it from the screenshot/text. */
+export type PricePlatform = 'taobao' | 'jd' | 'dewu' | 'other'
+
+export interface PriceTrack {
+  id: string
+  wishlist_item_id: string | null
+  item_name: string
+  target_price: number | null
+  current_price: number | null
+  source_url: string | null
+  platform: PricePlatform
+  last_checked_at: string | null
+  created_at: string
+}
+
+export interface PriceRecord {
+  id: string
+  price_track_id: string
+  price: number
+  is_manual: boolean
+  recorded_at: string
+}
+
+/** What the AI pulls out of a "蹲一下价格" input. */
+export interface ParsedPriceTrack {
+  item_name: string
+  price: number | null
+  platform: PricePlatform
+}

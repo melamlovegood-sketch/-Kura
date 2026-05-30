@@ -18,7 +18,9 @@ export function extractProduct(result: IntentResult, fallbackText: string): Pars
   const name = [d.item_name, d.description, d.category, fallbackText]
     .map((v) => (typeof v === 'string' ? v.trim() : ''))
     .find((v) => v.length > 0) ?? fallbackText
-  const priceRaw = d.estimated_price ?? d.amount
+  // `price` covers the price_track module, whose data carries the amount under
+  // that key — so a "耐克跑鞋599" input still yields a price on the buy/wishlist exits.
+  const priceRaw = d.estimated_price ?? d.amount ?? d.price
   const price = typeof priceRaw === 'number' && priceRaw > 0 ? priceRaw : null
   return { item_name: name, estimated_price: price }
 }

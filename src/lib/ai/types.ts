@@ -40,6 +40,7 @@ export type IntentModule =
   | 'budget'
   | 'subscription'
   | 'principles'
+  | 'price_track'
   | 'unknown'
 
 export interface IntentResult {

@@ -7,11 +7,13 @@ import { useSettingsStore } from '@/store/settings'
 import { usePrinciplesStore } from '@/store/principles'
 import { useImpulseStore } from '@/store/impulse'
 import { useWishlistStore } from '@/store/wishlist'
+import { usePriceTrackStore } from '@/store/priceTrack'
 import { parseProduct, type ParsedProduct } from '@/lib/parseProduct'
+import { parsePriceTrack } from '@/lib/parsePriceTrack'
 import { fileToBase64, formatAmount } from '@/lib/utils'
 
 type Product = ParsedProduct
-type Exit = 'impulse' | 'wishlist' | 'buy'
+type Exit = 'impulse' | 'wishlist' | 'buy' | 'track'
 
 /**
  * The single bottom-sheet entry behind the home "我现在想买……" button. Reuses the
@@ -29,6 +31,7 @@ export function BuyDrawer({ onClose }: { onClose: () => void }) {
   const principlesStore = usePrinciplesStore()
   const impulseStore = useImpulseStore()
   const wishlistStore = useWishlistStore()
+  const priceTrackStore = usePriceTrackStore()
 
   const [text, setText] = useState('')
   const [image, setImage] = useState<{ file: File; base64: string } | null>(null)
@@ -37,6 +40,8 @@ export function BuyDrawer({ onClose }: { onClose: () => void }) {
   // AI parse / write runs.
   const [busy, setBusy] = useState<null | Exit>(null)
   const [error, setError] = useState<string | null>(null)
+  // 蹲一下 result message — kept inline so the user sees what was recorded.
+  const [notice, setNotice] = useState<string | null>(null)
   const abortRef = useRef<AbortController | null>(null)
   const fileRef = useRef<HTMLInputElement>(null)
 
@@ -46,6 +51,7 @@ export function BuyDrawer({ onClose }: { onClose: () => void }) {
     setImage({ file, base64 })
     setParsed(null) // input changed → previous parse is stale
     setError(null)
+    setNotice(null)
   }
 
   async function handleInputFileSelect(e: React.ChangeEvent<HTMLInputElement>) {
@@ -130,6 +136,38 @@ export function BuyDrawer({ onClose }: { onClose: () => void }) {
     })
   }
 
+  // 蹲一下价格 → 解析商品/价格/平台，AI 判断是否同款，追加或新建蹲蹲记录。
+  // 不走 runExit/ensureParsed：这里用专门的 parsePriceTrack 提取平台字段。
+  async function handleTrack() {
+    if (busy) return
+    if (!adapter) { setError('请先在设置里填写 API Key'); return }
+    setBusy('track'); setError(null); setNotice(null)
+
+    abortRef.current?.abort()
+    const ctrl = new AbortController()
+    abortRef.current = ctrl
+
+    try {
+      const p = await parsePriceTrack(adapter, text, image?.base64, ctrl.signal)
+      if (p.price == null) {
+        setError('没识别到价格，试试「商品名 + 当前价格」，比如「耐克跑鞋 599」')
+        return
+      }
+      const { action, track } = await priceTrackStore.intake(adapter, p.item_name, p.price, p.platform)
+      setNotice(
+        action === 'updated'
+          ? `已更新 ${track.item_name} 的价格记录 · 当前 ${formatAmount(p.price)}`
+          : `已开始蹲 ${track.item_name}，当前 ${formatAmount(p.price)}`,
+      )
+      // Clear the input so a second screenshot can be logged without stale text.
+      setText(''); setImage(null); setParsed(null)
+    } catch (err) {
+      if ((err as Error).name !== 'AbortError') setError(`出错了：${(err as Error).message || '请稍后重试'}`)
+    } finally {
+      setBusy(null)
+    }
+  }
+
   return (
     <div
       className="fixed inset-0 z-50 flex items-end justify-center bg-black/30"
@@ -149,7 +187,7 @@ export function BuyDrawer({ onClose }: { onClose: () => void }) {
 
         <textarea
           value={text}
-          onChange={(e) => { setText(e.target.value); setParsed(null); setError(null) }}
+          onChange={(e) => { setText(e.target.value); setParsed(null); setError(null); setNotice(null) }}
           placeholder="说一句话，或拖拽截图到这里…"
           rows={2}
           autoFocus
@@ -190,6 +228,7 @@ export function BuyDrawer({ onClose }: { onClose: () => void }) {
         )}
 
         {error && <p className="mt-3 text-[13px] text-red-500">{error}</p>}
+        {notice && <p className="mt-3 text-[13px] text-emerald-600">{notice}</p>}
 
         {/* Three user-chosen exits (bug8) — the app no longer forces a cooldown. */}
         <div className="mt-5 flex flex-col gap-2.5">
@@ -213,6 +252,15 @@ export function BuyDrawer({ onClose }: { onClose: () => void }) {
           >
             {busy === 'buy' ? '分析中…' : '确定要买，记一笔 →'}
           </Button>
+
+          {/* 蹲一下：手动记录当前价格，持续追踪走势（不下购买决定）。 */}
+          <button
+            onClick={() => void handleTrack()}
+            disabled={!hasInput || !!busy}
+            className="mt-1 text-center text-[13px] text-ink-3 transition-colors hover:text-ink-2 disabled:opacity-40"
+          >
+            {busy === 'track' ? '分析中…' : '蹲一下价格 — 记录当前价，盯着降不降'}
+          </button>
         </div>
       </ImageDropZone>
     </div>

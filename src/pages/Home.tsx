@@ -11,6 +11,7 @@ import { RegretBoardCard } from '@/components/review/RegretBoardCard'
 import { ExpiryReminderCard } from '@/components/transaction/ExpiryReminderCard'
 import { SubscriptionReminderCard } from '@/components/subscription/SubscriptionReminderCard'
 import { DuplicateWarningCard } from '@/components/wishlist/DuplicateWarningCard'
+import { PriceDropCard } from '@/components/home/PriceDropCard'
 import { BuyDrawer } from '@/components/home/BuyDrawer'
 import { useSettingsStore } from '@/store/settings'
 import { API_SKIPPED_KEY } from '@/components/onboarding/Onboarding'
@@ -58,6 +59,7 @@ export function Home() {
 
       <DuplicateWarningCard />
       <WishPoolReachedCard />
+      <PriceDropCard />
       <SubscriptionReminderCard />
       <ExpiryReminderCard />
       {expiredImpulse && <ImpulseExpiredCard record={expiredImpulse} onApprove={handleImpulseApprove} onDismiss={(id) => impulseStore.dismiss(id)} />}

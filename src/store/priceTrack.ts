@@ -233,7 +233,9 @@ export const usePriceTrackStore = create<PriceTrackStore>()(persist((set, get) =
  * Derive the active (undismissed) price drops from current store state. A drop
  * exists when a track's newest record is strictly lower than the one before it.
  */
-export function activeDrops(state: PriceTrackStore): PriceDrop[] {
+export function activeDrops(
+  state: Pick<PriceTrackStore, 'tracks' | 'records' | 'dismissedDrops'>,
+): PriceDrop[] {
   const out: PriceDrop[] = []
   for (const track of state.tracks) {
     const recs = state.records[track.id]

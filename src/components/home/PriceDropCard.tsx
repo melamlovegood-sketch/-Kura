@@ -1,3 +1,4 @@
+import { useMemo } from 'react'
 import { useNavigate } from 'react-router-dom'
 import { TrendingDown } from 'lucide-react'
 import { Card } from '@/components/ui/card'
@@ -12,8 +13,19 @@ import { formatAmount } from '@/lib/utils'
  */
 export function PriceDropCard() {
   const navigate = useNavigate()
-  const drops = usePriceTrackStore(activeDrops)
+  // Subscribe to the raw slices (each a stable reference until `set` replaces it)
+  // and derive drops with useMemo. Calling activeDrops directly as a selector
+  // would return a freshly-built array every render → Zustand sees a new snapshot
+  // → "getSnapshot should be cached" → infinite re-render → white screen.
+  const tracks = usePriceTrackStore((s) => s.tracks)
+  const records = usePriceTrackStore((s) => s.records)
+  const dismissedDrops = usePriceTrackStore((s) => s.dismissedDrops)
   const dismissDrop = usePriceTrackStore((s) => s.dismissDrop)
+
+  const drops = useMemo(
+    () => activeDrops({ tracks, records, dismissedDrops }),
+    [tracks, records, dismissedDrops],
+  )
 
   if (drops.length === 0) return null
 

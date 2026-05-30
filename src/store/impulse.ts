@@ -1,6 +1,7 @@
 import { create } from 'zustand'
 import { persist, createJSONStorage } from 'zustand/middleware'
 import { supabase } from '@/lib/supabase'
+import { getCurrentUserId } from '@/lib/auth'
 import type { ImpulseRecord, ParsedImpulse } from '@/types/db'
 
 interface ImpulseStore {
@@ -41,6 +42,7 @@ export const useImpulseStore = create<ImpulseStore>()(persist((set, get) => ({
         recorded_at: now.toISOString(),
         expires_at: expiresAt.toISOString(),
         status: 'pending',
+        user_id: await getCurrentUserId(),
       })
       .select()
       .single()
@@ -67,6 +69,7 @@ export const useImpulseStore = create<ImpulseStore>()(persist((set, get) => ({
         impulse_record_id: record.id,
         priority: 0,
         status: 'active',
+        user_id: await getCurrentUserId(),
       })
       .select('id')
       .single()

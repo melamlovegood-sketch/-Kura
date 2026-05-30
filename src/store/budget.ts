@@ -1,6 +1,7 @@
 import { create } from 'zustand'
 import { persist, createJSONStorage } from 'zustand/middleware'
 import { supabase } from '@/lib/supabase'
+import { getCurrentUserId } from '@/lib/auth'
 import type { BudgetData } from '@/types/db'
 
 interface BudgetStore {
@@ -49,7 +50,7 @@ export const useBudgetStore = create<BudgetStore>()(persist((set) => ({
     if (existing) {
       await supabase.from('monthly_budgets').update(row).eq('id', existing.id)
     } else {
-      await supabase.from('monthly_budgets').insert(row)
+      await supabase.from('monthly_budgets').insert({ ...row, user_id: await getCurrentUserId() })
     }
 
     // Refetch to get computed used amounts

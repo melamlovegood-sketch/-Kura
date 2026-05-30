@@ -1,6 +1,7 @@
 import { create } from 'zustand'
 import { persist, createJSONStorage } from 'zustand/middleware'
 import { supabase } from '@/lib/supabase'
+import { getCurrentUserId } from '@/lib/auth'
 import type { ParsedWishlistItem, WishlistItem } from '@/types/db'
 
 interface WishlistStore {
@@ -46,6 +47,7 @@ export const useWishlistStore = create<WishlistStore>()(persist((set, get) => ({
         impulse_record_id: impulseRecordId ?? null,
         priority: 0,
         status: 'active',
+        user_id: await getCurrentUserId(),
       })
       .select()
       .single()
@@ -85,6 +87,7 @@ export const useWishlistStore = create<WishlistStore>()(persist((set, get) => ({
       const ins = await supabase.from('wish_pools').insert({
         focus_item_id: item.id,
         target_amount: item.estimated_price ?? 0,
+        user_id: await getCurrentUserId(),
       })
       // Errors here (e.g. RLS 401 on wish_pools) were the reason pin silently did
       // nothing — surface them so the UI can react instead of faking success.

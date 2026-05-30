@@ -1,6 +1,7 @@
 import { create } from 'zustand'
 import { persist, createJSONStorage } from 'zustand/middleware'
 import { supabase } from '@/lib/supabase'
+import { getCurrentUserId } from '@/lib/auth'
 import type { WishPoolData } from '@/types/db'
 
 /** Progress milestones (in %) that trigger the squirrel celebration. */
@@ -88,6 +89,7 @@ export const useWishPoolStore = create<WishPoolStore>()(persist((set, get) => ({
       wish_pool_id: pool.id,
       amount,
       description: description || null,
+      user_id: await getCurrentUserId(),
     })
 
     // Refetch to get updated saved_amount

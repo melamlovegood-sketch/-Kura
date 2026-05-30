@@ -1,6 +1,7 @@
 import { create } from 'zustand'
 import { persist, createJSONStorage } from 'zustand/middleware'
 import { supabase } from '@/lib/supabase'
+import { getCurrentUserId } from '@/lib/auth'
 
 export interface Principle {
   id: string
@@ -35,9 +36,11 @@ export const usePrinciplesStore = create<PrinciplesStore>()(persist((set, get) =
     const existing = get().items
     const maxOrder = existing.reduce((max, p) => Math.max(max, p.order), 0)
 
+    const userId = await getCurrentUserId()
     const rows = contents.map((content, i) => ({
       content,
       order: maxOrder + i + 1,
+      user_id: userId,
     }))
 
     const { data } = await supabase.from('personal_principles').insert(rows).select()

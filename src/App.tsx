@@ -8,6 +8,8 @@ import { Settings } from '@/pages/Settings'
 import { ConsumptionView } from '@/pages/ConsumptionView'
 import { SplashScreen } from '@/components/SplashScreen'
 import { Onboarding } from '@/components/onboarding/Onboarding'
+import { Login } from '@/components/auth/Login'
+import { useAuthStore } from '@/store/auth'
 import { useSettingsStore } from '@/store/settings'
 import { usePrinciplesStore } from '@/store/principles'
 import { useImpulseStore } from '@/store/impulse'
@@ -22,6 +24,10 @@ import { usePersonaStore } from '@/store/persona'
 
 export function App() {
   const [showSplash, setShowSplash] = useState(true)
+
+  const authStatus = useAuthStore((s) => s.status)
+  const userId     = useAuthStore((s) => s.userId)
+  const initAuth   = useAuthStore((s) => s.init)
 
   const loadSettings   = useSettingsStore((s) => s.load)
   const loadPrinciples = usePrinciplesStore((s) => s.load)
@@ -38,7 +44,14 @@ export function App() {
   const recomputeAch     = useAchievementsStore((s) => s.recompute)
   const generatePersona  = usePersonaStore((s) => s.generate)
 
+  // Boot the auth listener once.
+  useEffect(() => { initAuth() }, [initAuth])
+
   useEffect(() => {
+    // Only hydrate the app's data once a user is signed in — every query below
+    // runs under RLS as that user. Keyed on userId so logging in as a different
+    // account re-loads everything for the new owner.
+    if (authStatus !== 'authed' || !userId) return
     void loadSettings()
     void loadPrinciples()
     void loadImpulse()
@@ -54,10 +67,17 @@ export function App() {
     void loadAchievements().then(() => recomputeAch())
     // Build last month's spending-persona report.
     void generatePersona()
-  }, [loadSettings, loadPrinciples, loadImpulse, loadWishlist, loadWishPool, loadExecution, loadReview, loadRegret, loadExpiry, loadSubs, generateSubTx, loadAchievements, recomputeAch, generatePersona])
+  }, [authStatus, userId, loadSettings, loadPrinciples, loadImpulse, loadWishlist, loadWishPool, loadExecution, loadReview, loadRegret, loadExpiry, loadSubs, generateSubTx, loadAchievements, recomputeAch, generatePersona])
 
-  if (showSplash) {
+  // Splash plays while it animates AND until the auth state resolves, so we never
+  // flash the login screen before knowing whether a session exists.
+  if (showSplash || authStatus === 'loading') {
     return <SplashScreen onDone={() => setShowSplash(false)} />
+  }
+
+  // No session → email/password gate. Nothing else mounts (route protection).
+  if (authStatus === 'guest') {
+    return <Login />
   }
 
   return (

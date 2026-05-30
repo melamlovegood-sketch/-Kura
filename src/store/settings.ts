@@ -1,5 +1,6 @@
 import { create } from 'zustand'
 import { supabase } from '@/lib/supabase'
+import { getCurrentUserId } from '@/lib/auth'
 import { createAdapter, DEFAULT_MODELS } from '@/lib/ai/factory'
 import { applyTheme, type Theme } from '@/lib/theme'
 import type { AIAdapter, AIProvider } from '@/lib/ai/types'
@@ -108,7 +109,7 @@ export const useSettingsStore = create<SettingsStore>((set, get) => ({
     if (existing) {
       await supabase.from('user_settings').update(row).eq('id', existing.id)
     } else {
-      await supabase.from('user_settings').insert(row)
+      await supabase.from('user_settings').insert({ ...row, user_id: await getCurrentUserId() })
     }
 
     const adapter = next.aiApiKey

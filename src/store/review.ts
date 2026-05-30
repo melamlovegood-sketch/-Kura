@@ -1,6 +1,7 @@
 import { create } from 'zustand'
 import { persist, createJSONStorage } from 'zustand/middleware'
 import { supabase } from '@/lib/supabase'
+import { getCurrentUserId } from '@/lib/auth'
 import { useExecutionStore } from './execution'
 
 export interface ReviewTask {
@@ -132,6 +133,7 @@ export const useReviewStore = create<ReviewStore>()(persist((set, get) => ({
 
   createTasksForPurchase: async ({ item_name, brand, category, transactionId }) => {
     const now = Date.now()
+    const user_id = await getCurrentUserId()
     await supabase.from('review_tasks').insert([
       {
         transaction_id: transactionId ?? null,
@@ -141,6 +143,7 @@ export const useReviewStore = create<ReviewStore>()(persist((set, get) => ({
         due_at: new Date(now + 7 * 86_400_000).toISOString(),
         review_type: 'day7',
         status: 'pending',
+        user_id,
       },
       {
         transaction_id: transactionId ?? null,
@@ -150,13 +153,14 @@ export const useReviewStore = create<ReviewStore>()(persist((set, get) => ({
         due_at: new Date(now + 30 * 86_400_000).toISOString(),
         review_type: 'day30',
         status: 'pending',
+        user_id,
       },
     ])
   },
 
   complete: async (task, { usage_frequency, worthiness }) => {
     await Promise.all([
-      supabase.from('review_results').insert({ review_task_id: task.id, usage_frequency, worthiness }),
+      supabase.from('review_results').insert({ review_task_id: task.id, usage_frequency, worthiness, user_id: await getCurrentUserId() }),
       supabase.from('review_tasks').update({ status: 'completed' }).eq('id', task.id),
     ])
 

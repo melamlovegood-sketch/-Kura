@@ -5,6 +5,7 @@ import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card'
 import { Button } from '@/components/ui/button'
 import { Input } from '@/components/ui/input'
 import { useSettingsStore, DEFAULT_MODELS } from '@/store/settings'
+import { useAuthStore } from '@/store/auth'
 import { usePrinciplesStore } from '@/store/principles'
 import { SubscriptionManager } from '@/components/subscription/SubscriptionManager'
 import { AchievementsSection } from '@/components/achievements/AchievementsSection'
@@ -143,7 +144,33 @@ export function Settings() {
       <AchievementsSection />
 
       <SubscriptionManager />
+
+      <AccountCard />
     </div>
+  )
+}
+
+/** Signed-in account + sign-out. signOut purges local stores and reloads to the
+ *  login gate (see store/auth). */
+function AccountCard() {
+  const email = useAuthStore((s) => s.email)
+  const signOut = useAuthStore((s) => s.signOut)
+  const [busy, setBusy] = useState(false)
+
+  return (
+    <Card>
+      <CardHeader><CardTitle>账号</CardTitle></CardHeader>
+      <CardContent className="flex flex-col gap-4">
+        {email && <p className="text-[13px] text-ink-3">当前登录：<span className="text-ink-2">{email}</span></p>}
+        <Button
+          variant="outline"
+          onClick={() => { setBusy(true); void signOut() }}
+          disabled={busy}
+        >
+          {busy ? '退出中…' : '退出登录'}
+        </Button>
+      </CardContent>
+    </Card>
   )
 }
 

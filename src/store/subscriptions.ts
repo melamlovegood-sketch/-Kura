@@ -1,6 +1,7 @@
 import { create } from 'zustand'
 import { persist, createJSONStorage } from 'zustand/middleware'
 import { supabase } from '@/lib/supabase'
+import { getCurrentUserId } from '@/lib/auth'
 import { useBudgetStore } from './budget'
 import type { ParsedSubscription, Subscription } from '@/types/db'
 
@@ -90,6 +91,7 @@ export const useSubscriptionStore = create<SubscriptionStore>()(persist((set, ge
         billing_day: parsed.billing_day,
         category: parsed.category,
         is_active: true,
+        user_id: await getCurrentUserId(),
       })
       .select()
       .single()
@@ -147,6 +149,7 @@ export const useSubscriptionStore = create<SubscriptionStore>()(persist((set, ge
 
     const charged = new Set(((existing as { subscription_id: string }[] | null) ?? []).map((r) => r.subscription_id))
 
+    const user_id = await getCurrentUserId()
     const rows = active
       .filter((s) => {
         const effDay = Math.min(s.billing_day, dim)
@@ -160,6 +163,7 @@ export const useSubscriptionStore = create<SubscriptionStore>()(persist((set, ge
         description: s.name,
         source: 'text',
         subscription_id: s.id,
+        user_id,
       }))
 
     if (rows.length === 0) return

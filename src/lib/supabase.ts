@@ -7,16 +7,15 @@ if (!supabaseUrl || !supabaseAnonKey) {
   throw new Error('Missing VITE_SUPABASE_URL or VITE_SUPABASE_ANON_KEY in .env')
 }
 
-// This app has no user login — every request authenticates with the anon key.
-// supabase-js defaults to persistSession:true, which means a *stale* session token
-// left in localStorage (e.g. from an earlier auth experiment) gets sent as the
-// `Authorization: Bearer` header instead of the anon key, yielding a 401 on
-// otherwise-public tables (e.g. /rest/v1/wish_pools). Disabling session
-// persistence/refresh forces the client to always carry the anon key, which the
-// REST endpoint accepts (verified: anon key → 200 on every table).
+// Multi-user app (邮箱 + 密码 via Supabase Auth). The client MUST persist the
+// session: once a user signs in, supabase-js stores the JWT in localStorage and
+// sends it as the `Authorization: Bearer` header on every REST call, which is
+// exactly what the RLS policies (auth.uid() = user_id) rely on to scope rows to
+// the logged-in user. autoRefreshToken keeps that JWT alive across reloads.
 export const supabase = createClient(supabaseUrl, supabaseAnonKey, {
   auth: {
-    persistSession: false,
-    autoRefreshToken: false,
+    persistSession: true,
+    autoRefreshToken: true,
+    detectSessionInUrl: true,
   },
 })

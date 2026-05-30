@@ -1,4 +1,5 @@
 import { supabase } from '@/lib/supabase'
+import { getCurrentUserId } from '@/lib/auth'
 import type { ItemCategory, CategoryMain, ParsedTransaction } from '@/types/db'
 
 export async function addTransaction(
@@ -15,6 +16,7 @@ export async function addTransaction(
       description: tx.description || null,
       expiry_date: tx.expiry_date || null,
       source,
+      user_id: await getCurrentUserId(),
     })
     .select('id')
     .single()
@@ -44,6 +46,7 @@ export async function addExecutionTransaction(opts: {
       // A uuid column rejects '' — coalesce an empty/missing session id to null so
       // a transaction can still be recorded even when no session was created.
       execution_session_id: opts.executionSessionId || null,
+      user_id: await getCurrentUserId(),
     })
     .select('id')
     .single()

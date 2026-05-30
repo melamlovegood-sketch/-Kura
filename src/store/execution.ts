@@ -1,6 +1,7 @@
 import { create } from 'zustand'
 import { persist, createJSONStorage } from 'zustand/middleware'
 import { supabase } from '@/lib/supabase'
+import { getCurrentUserId } from '@/lib/auth'
 
 export interface BrandEntry {
   id: string
@@ -63,7 +64,7 @@ export const useExecutionStore = create<ExecutionStore>()(persist((set, get) => 
   addBrand: async (category, brandName, note) => {
     const { data } = await supabase
       .from('brand_library')
-      .insert({ category, brand_name: brandName, weight: 5, note: note ?? null })
+      .insert({ category, brand_name: brandName, weight: 5, note: note ?? null, user_id: await getCurrentUserId() })
       .select()
       .single()
 
@@ -86,7 +87,7 @@ export const useExecutionStore = create<ExecutionStore>()(persist((set, get) => 
     const nextOrder = rules.length ? Math.max(...rules.map((r) => r.order)) + 1 : 1
     const { data } = await supabase
       .from('sop_rules')
-      .insert({ title, content: content || title, order: nextOrder })
+      .insert({ title, content: content || title, order: nextOrder, user_id: await getCurrentUserId() })
       .select()
       .single()
 
@@ -110,6 +111,7 @@ export const useExecutionStore = create<ExecutionStore>()(persist((set, get) => 
         category,
         timer_duration: timerDuration,
         started_at: new Date().toISOString(),
+        user_id: await getCurrentUserId(),
       })
       .select('id')
       .single()

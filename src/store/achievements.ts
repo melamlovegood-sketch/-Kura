@@ -1,6 +1,7 @@
 import { create } from 'zustand'
 import { persist, createJSONStorage } from 'zustand/middleware'
 import { supabase } from '@/lib/supabase'
+import { getCurrentUserId } from '@/lib/auth'
 import {
   newlyQualified,
   NON_COLLECTOR_KEYS,
@@ -57,7 +58,7 @@ async function persistStreak(current: number, longest: number, today: string) {
   const { data: existing } = await supabase.from('user_streak').select('id').limit(1).maybeSingle()
   const row = { current_streak: current, longest_streak: longest, last_check_date: today }
   if (existing) await supabase.from('user_streak').update(row).eq('id', existing.id)
-  else await supabase.from('user_streak').insert(row)
+  else await supabase.from('user_streak').insert({ ...row, user_id: await getCurrentUserId() })
 }
 
 export const useAchievementsStore = create<AchievementsStore>()(persist((set, get) => ({
@@ -146,9 +147,10 @@ export const useAchievementsStore = create<AchievementsStore>()(persist((set, ge
     if (allOthers && !unlocked.has('squirrel_collector')) toUnlock.push('squirrel_collector')
 
     if (toUnlock.length > 0) {
+      const user_id = await getCurrentUserId()
       await supabase
         .from('achievements')
-        .upsert(toUnlock.map((achievement_key) => ({ achievement_key })), { onConflict: 'achievement_key', ignoreDuplicates: true })
+        .upsert(toUnlock.map((achievement_key) => ({ achievement_key, user_id })), { onConflict: 'user_id,achievement_key', ignoreDuplicates: true })
     }
 
     set({
@@ -160,9 +162,10 @@ export const useAchievementsStore = create<AchievementsStore>()(persist((set, ge
 
   unlock: async (key) => {
     if (get().unlocked.includes(key)) return
+    const user_id = await getCurrentUserId()
     await supabase
       .from('achievements')
-      .upsert([{ achievement_key: key }], { onConflict: 'achievement_key', ignoreDuplicates: true })
+      .upsert([{ achievement_key: key, user_id }], { onConflict: 'user_id,achievement_key', ignoreDuplicates: true })
 
     const unlocked = [...get().unlocked, key]
 
@@ -171,7 +174,7 @@ export const useAchievementsStore = create<AchievementsStore>()(persist((set, ge
     if (NON_COLLECTOR_KEYS.every((k) => set2.has(k)) && !set2.has('squirrel_collector')) {
       await supabase
         .from('achievements')
-        .upsert([{ achievement_key: 'squirrel_collector' }], { onConflict: 'achievement_key', ignoreDuplicates: true })
+        .upsert([{ achievement_key: 'squirrel_collector', user_id }], { onConflict: 'user_id,achievement_key', ignoreDuplicates: true })
       unlocked.push('squirrel_collector')
     }
 

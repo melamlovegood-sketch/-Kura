@@ -1,6 +1,6 @@
 import { useEffect, useState } from 'react'
 import { useNavigate } from 'react-router-dom'
-import { ChevronRight } from 'lucide-react'
+import { ChevronRight, Download, Trash2 } from 'lucide-react'
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card'
 import { Button } from '@/components/ui/button'
 import { Input } from '@/components/ui/input'
@@ -8,6 +8,8 @@ import { useSettingsStore, DEFAULT_MODELS } from '@/store/settings'
 import { useAuthStore } from '@/store/auth'
 import { usePrinciplesStore } from '@/store/principles'
 import { AchievementsSection } from '@/components/achievements/AchievementsSection'
+import { ExportSheet } from '@/components/settings/ExportSheet'
+import { DeleteAccountDialog } from '@/components/settings/DeleteAccountDialog'
 import { THEME_LABELS, type Theme } from '@/lib/theme'
 import { cn } from '@/lib/utils'
 import type { AIProvider } from '@/lib/ai/types'
@@ -148,7 +150,64 @@ export function Settings() {
       <AchievementsSection />
 
       <AccountCard />
+
+      <DataSection />
     </div>
+  )
+}
+
+/**
+ * 「我的数据」+「危险区域」. Export opens a bottom Sheet (格式/时间范围 + 实时条数);
+ * 注销 opens a confirm dialog (邮箱二次确认). Both work in 游客模式 too — export reads
+ * the localStorage shim, 注销 just wipes local data with no email step.
+ */
+function DataSection() {
+  const [exportOpen, setExportOpen] = useState(false)
+  const [deleteOpen, setDeleteOpen] = useState(false)
+
+  return (
+    <>
+      <Card>
+        <CardHeader><CardTitle>我的数据</CardTitle></CardHeader>
+        <CardContent>
+          <button
+            onClick={() => setExportOpen(true)}
+            className="flex w-full items-center justify-between gap-3 rounded-xl border-theme bg-card-alt px-4 py-3 text-left transition-colors hover:bg-card"
+          >
+            <span className="flex items-center gap-3">
+              <Download size={18} className="shrink-0 text-ink-3" />
+              <span>
+                <span className="block text-[15px] text-ink">导出全部数据</span>
+                <span className="mt-0.5 block text-[12px] text-ink-4">CSV · JSON · 可选时间范围</span>
+              </span>
+            </span>
+            <ChevronRight size={16} className="shrink-0 text-ink-4" />
+          </button>
+        </CardContent>
+      </Card>
+
+      <Card>
+        <CardHeader><CardTitle className="text-red-600">危险区域</CardTitle></CardHeader>
+        <CardContent>
+          <button
+            onClick={() => setDeleteOpen(true)}
+            className="flex w-full items-center justify-between gap-3 rounded-xl border border-red-200 bg-red-50/50 px-4 py-3 text-left transition-colors hover:bg-red-50 dark:border-red-900/40 dark:bg-red-950/20"
+          >
+            <span className="flex items-center gap-3">
+              <Trash2 size={18} className="shrink-0 text-red-600" />
+              <span>
+                <span className="block text-[15px] text-red-600">注销账号</span>
+                <span className="mt-0.5 block text-[12px] text-red-400">删除所有数据，不可恢复</span>
+              </span>
+            </span>
+            <ChevronRight size={16} className="shrink-0 text-red-400" />
+          </button>
+        </CardContent>
+      </Card>
+
+      {exportOpen && <ExportSheet onClose={() => setExportOpen(false)} />}
+      {deleteOpen && <DeleteAccountDialog onClose={() => setDeleteOpen(false)} />}
+    </>
   )
 }
 

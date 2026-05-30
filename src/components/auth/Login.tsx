@@ -172,6 +172,8 @@ export function Login() {
                   <span className="text-[13px] text-ink-3">邮箱</span>
                   <Input
                     type="email"
+                    name="email"
+                    id="email"
                     value={email}
                     onChange={(e) => { setEmail(e.target.value); setError(null) }}
                     placeholder="you@example.com"

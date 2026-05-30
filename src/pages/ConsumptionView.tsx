@@ -5,8 +5,10 @@ import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card'
 import { Button } from '@/components/ui/button'
 import { BudgetCard } from '@/components/budget/BudgetCard'
 import { PrinciplesSection } from '@/components/principles/PrinciplesSection'
+import { ShoppingPrinciplesSection } from '@/components/execution/ShoppingPrinciples'
 import { CostPerspectiveFields, type CostPerspectiveValue } from '@/components/cost/CostPerspectiveFields'
 import { useSettingsStore } from '@/store/settings'
+import { useExecutionStore } from '@/store/execution'
 
 /**
  * 我的消费观 (bug10) — a single secondary page that gathers the scattered AI
@@ -17,6 +19,12 @@ import { useSettingsStore } from '@/store/settings'
 export function ConsumptionView() {
   const navigate = useNavigate()
   const store = useSettingsStore()
+  const execLoaded = useExecutionStore((s) => s.loaded)
+  const loadExec = useExecutionStore((s) => s.load)
+
+  // 购物原则 lives in the execution store; make sure it's hydrated if the user
+  // deep-links here before App's startup load ran.
+  useEffect(() => { if (!execLoaded) void loadExec() }, [execLoaded, loadExec])
 
   const [cost, setCost] = useState<CostPerspectiveValue>({
     identity: store.identity,
@@ -81,6 +89,9 @@ export function ConsumptionView() {
 
       {/* ── 个人消费原则 ── */}
       <PrinciplesSection />
+
+      {/* ── 购物原则 (sop_rules, shared with 执行层) ── */}
+      <ShoppingPrinciplesSection />
     </div>
   )
 }

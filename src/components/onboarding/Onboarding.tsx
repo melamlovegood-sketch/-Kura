@@ -6,7 +6,6 @@ import { useBudgetStore } from '@/store/budget'
 import { useWishlistStore } from '@/store/wishlist'
 import { useWishPoolStore } from '@/store/wishpool'
 import { useSettingsStore } from '@/store/settings'
-import { useExecutionStore } from '@/store/execution'
 import { usePrinciplesStore } from '@/store/principles'
 import { CostPerspectiveFields, EMPTY_COST_VALUE, type CostPerspectiveValue } from '@/components/cost/CostPerspectiveFields'
 import { createAdapter, DEFAULT_MODELS } from '@/lib/ai/factory'
@@ -71,9 +70,8 @@ export function Onboarding() {
 
   function finish() {
     localStorage.setItem(DONE_KEY, 'true')
-    // Seed this user's default execution-layer data (SOP rules) now that the
-    // global seed is gone (migration 0009). Idempotent + fire-and-forget.
-    void useExecutionStore.getState().seedDefaultsIfEmpty()
+    // No SOP-rule seeding: new users start with an empty 购物原则 list and add
+    // their own (执行层 / 我的消费观). The old default-seed step was removed.
     setPhase('hidden')
   }
 

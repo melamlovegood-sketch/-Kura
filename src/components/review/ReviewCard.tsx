@@ -1,4 +1,4 @@
-import { useEffect, useState } from 'react'
+import { useState } from 'react'
 import { Card } from '@/components/ui/card'
 import { useReviewStore, type ReviewTask } from '@/store/review'
 import { cn } from '@/lib/utils'
@@ -21,13 +21,18 @@ export function ReviewCard({ task }: { task: ReviewTask }) {
   const { complete } = useReviewStore()
   const [freq,  setFreq]  = useState<Frequency | null>(null)
   const [worth, setWorth] = useState<Worthiness | null>(null)
+  const [note,  setNote]  = useState('')
   const [saving, setSaving] = useState(false)
 
-  useEffect(() => {
-    if (!freq || !worth || saving) return
+  // Both choices made → reveal the optional 一句话 box and an explicit submit, so
+  // the user can add a note (or skip) instead of the card auto-saving on selection.
+  const ready = !!freq && !!worth
+
+  function handleSubmit() {
+    if (!ready || saving) return
     setSaving(true)
-    void complete(task, { usage_frequency: freq, worthiness: worth })
-  }, [freq, worth]) // eslint-disable-line react-hooks/exhaustive-deps
+    void complete(task, { usage_frequency: freq!, worthiness: worth!, usage_note: note.trim() || null })
+  }
 
   const daysAgo = Math.floor((Date.now() - new Date(task.created_at).getTime()) / 86_400_000)
 
@@ -80,7 +85,27 @@ export function ReviewCard({ task }: { task: ReviewTask }) {
           </div>
         </div>
 
-        {saving && <p className="text-center text-[13px] text-ink-4">保存中…</p>}
+        {/* Optional one-liner — appears once both choices are made; can be skipped. */}
+        {ready && (
+          <div className="flex flex-col gap-2">
+            <p className="text-[13px] text-ink-3">一句话说说？<span className="text-ink-4">（可跳过）</span></p>
+            <textarea
+              value={note}
+              onChange={(e) => setNote(e.target.value)}
+              disabled={saving}
+              placeholder="如：穿了一次就闲置了 / 比想象中实用"
+              rows={2}
+              className="w-full resize-none rounded-lg border-theme bg-card-alt px-3 py-2 text-[14px] text-ink placeholder:text-ink-4 focus:bg-card focus:outline-none focus:ring-1 focus:ring-[var(--border)] transition-colors"
+            />
+            <button
+              onClick={handleSubmit}
+              disabled={saving}
+              className="self-end rounded-lg bg-accent px-4 py-2 text-[13px] font-medium text-on-accent transition-opacity disabled:opacity-50"
+            >
+              {saving ? '保存中…' : note.trim() ? '提交' : '跳过并提交'}
+            </button>
+          </div>
+        )}
       </div>
     </Card>
   )

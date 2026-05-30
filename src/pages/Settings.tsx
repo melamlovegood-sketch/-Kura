@@ -105,7 +105,10 @@ export function Settings() {
           </div>
           <div>
             <label className="mb-2 block text-[13px] text-ink-3">模型</label>
-            <Input value={model} onChange={(e) => setModel(e.target.value)} placeholder={DEFAULT_MODELS[provider]} />
+            {/* autoComplete off + a non-email name so the browser never saves this
+                value (e.g. "qwen-vl-plus") and later autofills it into the login
+                email field. */}
+            <Input name="ai-model" value={model} onChange={(e) => setModel(e.target.value)} placeholder={DEFAULT_MODELS[provider]} autoComplete="off" />
           </div>
           <div>
             <label className="mb-2 block text-[13px] text-ink-3">API Key</label>

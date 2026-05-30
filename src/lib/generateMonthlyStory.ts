@@ -18,7 +18,8 @@ export interface StoryPurchase {
   amount: number | null
   worthiness: 'worth' | 'okay' | 'regret'
   usage_frequency: 'everyday' | 'sometimes' | 'rarely'
-  usage_label: string // human phrase derived from usage_frequency (no free-text field exists)
+  usage_note: string | null // the user's optional 「一句话」, quoted verbatim when present
+  usage_label: string // usage_note if given, else a phrase derived from usage_frequency
 }
 
 export interface MonthlyStorySnapshot {
@@ -96,7 +97,7 @@ export async function aggregateMonthData(month: string, now = new Date()): Promi
     supabase.from('monthly_budgets').select('discretionary_limit').eq('month', month).maybeSingle(),
     supabase
       .from('review_results')
-      .select('usage_frequency, worthiness, review_tasks!inner(item_name, category, transaction_id, transactions(amount))')
+      .select('usage_frequency, worthiness, usage_note, review_tasks!inner(item_name, category, transaction_id, transactions(amount))')
       .gte('completed_at', r.startTs).lt('completed_at', r.endTs)
       .order('completed_at', { ascending: false }),
     supabase.from('impulse_records').select('status').gte('recorded_at', r.startTs).lt('recorded_at', r.endTs),
@@ -132,6 +133,7 @@ export async function aggregateMonthData(month: string, now = new Date()): Promi
   type ReviewRow = {
     usage_frequency: StoryPurchase['usage_frequency']
     worthiness: StoryPurchase['worthiness']
+    usage_note: string | null
     review_tasks: {
       item_name: string
       category: string | null
@@ -149,12 +151,15 @@ export async function aggregateMonthData(month: string, now = new Date()): Promi
     if (seen.has(key)) continue
     seen.add(key)
     const amt = task.transactions?.amount
+    // Prefer the user's own words ("穿了一次") over the frequency-derived phrase.
+    const note = row.usage_note?.trim() || null
     reviewed.push({
       item_name: task.item_name,
       amount: amt == null ? null : Number(amt),
       worthiness: row.worthiness,
       usage_frequency: row.usage_frequency,
-      usage_label: USAGE_LABEL[row.usage_frequency],
+      usage_note: note,
+      usage_label: note ?? USAGE_LABEL[row.usage_frequency],
     })
   }
   const worthCount = reviewed.filter((p) => p.worthiness === 'worth').length
@@ -250,7 +255,9 @@ function snapshotFacts(s: MonthlyStorySnapshot): string {
     lines.push(`本月完成复盘的消费 ${s.reviewed.length} 笔：值得 ${s.worthCount} 笔，后悔 ${s.regretCount} 笔`)
     for (const p of s.reviewed) {
       const tag = p.worthiness === 'worth' ? '觉得值' : p.worthiness === 'regret' ? '后悔了' : '还行'
-      lines.push(`  - 「${p.item_name}」${p.amount != null ? yuan(p.amount) : '金额未知'}，${tag}，${p.usage_label}`)
+      // When the user left their own one-liner, mark it as a quotable verbatim note.
+      const usage = p.usage_note ? `用户原话「${p.usage_note}」` : p.usage_label
+      lines.push(`  - 「${p.item_name}」${p.amount != null ? yuan(p.amount) : '金额未知'}，${tag}，${usage}`)
     }
     if (s.topRegretCategory) lines.push(`后悔最多的品类：${s.topRegretCategory}`)
   } else {

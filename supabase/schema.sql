@@ -203,6 +203,7 @@ CREATE TABLE review_results (
   review_task_id  uuid NOT NULL REFERENCES review_tasks (id) ON DELETE CASCADE,
   usage_frequency text NOT NULL CHECK (usage_frequency IN ('everyday', 'sometimes', 'rarely')),
   worthiness      text NOT NULL CHECK (worthiness IN ('worth', 'okay', 'regret')),
+  usage_note      text,
   completed_at    timestamptz NOT NULL DEFAULT now()
 );
 

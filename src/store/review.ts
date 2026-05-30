@@ -79,6 +79,8 @@ export interface ReviewStore {
     result: {
       usage_frequency: 'everyday' | 'sometimes' | 'rarely'
       worthiness: 'worth' | 'okay' | 'regret'
+      /** Optional one-liner ("一句话说说？"); null when skipped. */
+      usage_note?: string | null
     },
   ) => Promise<void>
 }
@@ -245,9 +247,9 @@ export const useReviewStore = create<ReviewStore>()(persist((set, get) => ({
     ])
   },
 
-  complete: async (task, { usage_frequency, worthiness }) => {
+  complete: async (task, { usage_frequency, worthiness, usage_note }) => {
     await Promise.all([
-      supabase.from('review_results').insert({ review_task_id: task.id, usage_frequency, worthiness, user_id: await getCurrentUserId() }),
+      supabase.from('review_results').insert({ review_task_id: task.id, usage_frequency, worthiness, usage_note: usage_note?.trim() || null, user_id: await getCurrentUserId() }),
       supabase.from('review_tasks').update({ status: 'completed' }).eq('id', task.id),
     ])
 

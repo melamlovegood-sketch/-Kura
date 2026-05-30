@@ -1,5 +1,5 @@
 import { Link, useLocation } from 'react-router-dom'
-import { Home, ListTodo, ShoppingBag, Settings } from 'lucide-react'
+import { Home, ListTodo, ShoppingBag, BookOpen, Settings } from 'lucide-react'
 import { cn } from '@/lib/utils'
 import { type ReactNode } from 'react'
 
@@ -7,6 +7,7 @@ const NAV_ITEMS = [
   { to: '/',          Icon: Home,        label: '主页' },
   { to: '/wishlist',  Icon: ListTodo,    label: '清单' },
   { to: '/execution', Icon: ShoppingBag, label: '执行' },
+  { to: '/review',    Icon: BookOpen,    label: '复盘' },
   { to: '/settings',  Icon: Settings,    label: '设置' },
 ] as const
 

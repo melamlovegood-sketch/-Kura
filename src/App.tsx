@@ -4,6 +4,7 @@ import { AppLayout } from '@/components/layout/AppLayout'
 import { Home } from '@/pages/Home'
 import { Wishlist } from '@/pages/Wishlist'
 import { Execution } from '@/pages/Execution'
+import { Review } from '@/pages/Review'
 import { Settings } from '@/pages/Settings'
 import { ConsumptionView } from '@/pages/ConsumptionView'
 import { SplashScreen } from '@/components/SplashScreen'
@@ -37,6 +38,8 @@ export function App() {
   const loadExecution  = useExecutionStore((s) => s.load)
   const loadReview     = useReviewStore   ((s) => s.load)
   const loadRegret     = useReviewStore   ((s) => s.loadRegret)
+  const loadStories    = useReviewStore   ((s) => s.loadStories)
+  const ensureLastMonthStory = useReviewStore((s) => s.ensureLastMonthStory)
   const loadExpiry     = useExpiryStore   ((s) => s.load)
   const loadSubs       = useSubscriptionStore((s) => s.load)
   const generateSubTx  = useSubscriptionStore((s) => s.generateDueTransactions)
@@ -52,7 +55,10 @@ export function App() {
     // runs under RLS as that user. Keyed on userId so logging in as a different
     // account re-loads everything for the new owner.
     if (authStatus !== 'authed' || !userId) return
-    void loadSettings()
+    // Settings carry the AI adapter; once loaded, auto-generate last month's story
+    // (no-op if it already exists or there's no API key).
+    void loadSettings().then(() => ensureLastMonthStory())
+    void loadStories()
     void loadPrinciples()
     void loadImpulse()
     void loadWishlist()
@@ -67,7 +73,7 @@ export function App() {
     void loadAchievements().then(() => recomputeAch())
     // Build last month's spending-persona report.
     void generatePersona()
-  }, [authStatus, userId, loadSettings, loadPrinciples, loadImpulse, loadWishlist, loadWishPool, loadExecution, loadReview, loadRegret, loadExpiry, loadSubs, generateSubTx, loadAchievements, recomputeAch, generatePersona])
+  }, [authStatus, userId, loadSettings, loadPrinciples, loadImpulse, loadWishlist, loadWishPool, loadExecution, loadReview, loadRegret, loadStories, ensureLastMonthStory, loadExpiry, loadSubs, generateSubTx, loadAchievements, recomputeAch, generatePersona])
 
   // Splash plays while it animates AND until the auth state resolves, so we never
   // flash the login screen before knowing whether a session exists.
@@ -87,6 +93,7 @@ export function App() {
           <Route path="/"          element={<Home />} />
           <Route path="/wishlist"  element={<Wishlist />} />
           <Route path="/execution" element={<Execution />} />
+          <Route path="/review"    element={<Review />} />
           <Route path="/settings"  element={<Settings />} />
           <Route path="/consumption" element={<ConsumptionView />} />
         </Routes>

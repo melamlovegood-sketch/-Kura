@@ -8,7 +8,6 @@ import { ImpulseExpiredCard } from '@/components/impulse/ImpulseExpiredCard'
 import { WishlistNudgeCard } from '@/components/wishlist/WishlistNudgeCard'
 import { ReviewCard } from '@/components/review/ReviewCard'
 import { RegretBoardCard } from '@/components/review/RegretBoardCard'
-import { PersonaCard } from '@/components/review/PersonaCard'
 import { ExpiryReminderCard } from '@/components/transaction/ExpiryReminderCard'
 import { SubscriptionReminderCard } from '@/components/subscription/SubscriptionReminderCard'
 import { DuplicateWarningCard } from '@/components/wishlist/DuplicateWarningCard'
@@ -19,7 +18,11 @@ import { useBudgetStore } from '@/store/budget'
 import { useImpulseStore } from '@/store/impulse'
 import { useWishlistStore } from '@/store/wishlist'
 import { useReviewStore } from '@/store/review'
+import { previousMonthString } from '@/lib/generateMonthlyStory'
+import { formatMonth } from '@/lib/utils'
 import type { WishlistItem } from '@/types/db'
+
+const STORY_NUDGE_DISMISSED_KEY = 'kura-story-nudge-dismissed'
 
 export function Home() {
   const budgetStore   = useBudgetStore()
@@ -62,7 +65,7 @@ export function Home() {
       {!expiredImpulse && !reviewStore.pendingTasks[0] && nudgeItem && (
         <WishlistNudgeCard item={nudgeItem} onKeep={handleNudgeKeep} onDismiss={(id) => wishlistStore.dismiss(id)} />
       )}
-      <PersonaCard />
+      <StoryNudge />
       <RegretBoardCard />
 
       <div className="h-16 md:h-0" />
@@ -81,6 +84,38 @@ export function Home() {
 
       {drawerOpen && <BuyDrawer onClose={() => setDrawerOpen(false)} />}
     </div>
+  )
+}
+
+/**
+ * Month-start nudge: once last month's review story has been generated, push a
+ * tappable card that jumps to the 复盘 page. Dismissible per-month (localStorage)
+ * so it doesn't nag after the user has seen it. Replaces the old standalone
+ * PersonaCard on Home — the persona now lives inside the story card.
+ */
+function StoryNudge() {
+  const navigate = useNavigate()
+  const lastMonth = previousMonthString(new Date())
+  const hasStory = useReviewStore((s) => !!s.stories[lastMonth])
+  const [dismissed, setDismissed] = useState(
+    () => localStorage.getItem(STORY_NUDGE_DISMISSED_KEY) === lastMonth,
+  )
+
+  if (!hasStory || dismissed) return null
+
+  function dismiss() {
+    localStorage.setItem(STORY_NUDGE_DISMISSED_KEY, lastMonth)
+    setDismissed(true)
+  }
+
+  return (
+    <button
+      onClick={() => { dismiss(); navigate('/review') }}
+      className="w-full rounded-[10px] border-theme bg-card px-4 py-3 text-left transition-colors hover:bg-card-alt"
+    >
+      <p className="text-[11px] font-medium uppercase tracking-[0.14em] text-ink-4">月度复盘</p>
+      <p className="mt-1 text-[15px] text-ink">你的{formatMonth(lastMonth)}复盘故事已生成 →</p>
+    </button>
   )
 }
 

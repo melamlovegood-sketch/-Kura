@@ -56,6 +56,15 @@ export function Login() {
     try {
       if (tab === 'signin') {
         const res = await signIn(e, password)
+        if (res.needsVerify) {
+          // Account exists but email was never verified → resend OTP and switch
+          // to the verification step (reusing the sign-up VerifyForm).
+          await resendOtp(e)
+          setPhase('verifying')
+          setNotice('你的邮箱尚未验证，验证码已重新发送，请查收')
+          setCooldown(RESEND_COOLDOWN)
+          return
+        }
         if (res.error) setError(res.error)
         // Success → onAuthStateChange takes over and unmounts this screen.
         return

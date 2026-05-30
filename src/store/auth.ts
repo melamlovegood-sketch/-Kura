@@ -5,6 +5,9 @@ type Status = 'loading' | 'authed' | 'guest'
 
 interface AuthResult {
   error: string | null
+  /** signIn only: the account exists but its email was never verified. The UI
+   *  should resend the OTP and switch to the verification step. */
+  needsVerify?: boolean
 }
 
 interface AuthStore {
@@ -72,7 +75,15 @@ export const useAuthStore = create<AuthStore>((set) => ({
       email: email.trim(),
       password,
     })
-    return { error: error ? mapAuthError(error.message) : null }
+    if (!error) return { error: null }
+    // Account exists but the email was never verified (user signed up then closed
+    // the app before entering the OTP). Flag it so the UI can resend + verify
+    // instead of showing the misleading "邮箱或密码错误".
+    const code = (error as { code?: string }).code
+    const isUnverified =
+      code === 'email_not_confirmed' || error.message.toLowerCase().includes('email not confirmed')
+    if (isUnverified) return { error: null, needsVerify: true }
+    return { error: mapAuthError(error.message) }
   },
 
   signUp: async (email, password) => {

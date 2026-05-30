@@ -6,3 +6,5 @@ dist
 
 .vercel
 .claude
+
+supabase/.temp

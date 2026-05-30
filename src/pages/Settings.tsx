@@ -7,7 +7,6 @@ import { Input } from '@/components/ui/input'
 import { useSettingsStore, DEFAULT_MODELS } from '@/store/settings'
 import { useAuthStore } from '@/store/auth'
 import { usePrinciplesStore } from '@/store/principles'
-import { SubscriptionManager } from '@/components/subscription/SubscriptionManager'
 import { AchievementsSection } from '@/components/achievements/AchievementsSection'
 import { THEME_LABELS, type Theme } from '@/lib/theme'
 import { cn } from '@/lib/utils'
@@ -145,8 +144,6 @@ export function Settings() {
       </Button>
 
       <AchievementsSection />
-
-      <SubscriptionManager />
 
       <AccountCard />
     </div>

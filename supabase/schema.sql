@@ -212,12 +212,8 @@ CREATE TABLE review_results (
 INSERT INTO user_settings (cooldown_hours, ai_provider, ai_model)
 VALUES (72, 'qwen', 'qwen-vl-plus');
 
-INSERT INTO sop_rules (title, content, "order") VALUES
-  ('裤子', '裤子只去线下试穿，满意再线上买', 1),
-  ('上衣', '上衣优先有品牌背书的；贵的好牌子去闲鱼找二手', 2),
-  ('搜索决策', '搜索品类时看AI总结，前几个推荐快速决断；决断不了就都买货比三家', 3),
-  ('品牌优先', '优先从品牌库里选信任品牌', 4),
-  ('计时器', '购物前设定计时器，时间到立刻下单当前最优选', 5);
+-- 执行层 SOP 不再 seed 默认规则（裤子 / 上衣 / 搜索决策 / 品牌优先 / 计时器）。
+-- 这些只是占位文案，真实 SOP 应由用户自己沉淀。见 migration 0013。
 
 -- ─── personal_principles ─────────────────────────────────────────────────────
 

@@ -1,5 +1,5 @@
 import { Link, useLocation } from 'react-router-dom'
-import { Home, ListTodo, ShoppingBag, BookOpen, Settings } from 'lucide-react'
+import { Home, ListTodo, ShoppingBag, BookOpen, Wallet, Settings } from 'lucide-react'
 import { cn } from '@/lib/utils'
 import { type ReactNode } from 'react'
 
@@ -8,7 +8,7 @@ const NAV_ITEMS = [
   { to: '/wishlist',  Icon: ListTodo,    label: '清单' },
   { to: '/execution', Icon: ShoppingBag, label: '执行' },
   { to: '/review',    Icon: BookOpen,    label: '复盘' },
-  { to: '/settings',  Icon: Settings,    label: '设置' },
+  { to: '/billing',   Icon: Wallet,      label: '账单' },
 ] as const
 
 export function AppLayout({ children }: { children: ReactNode }) {
@@ -33,6 +33,18 @@ export function AppLayout({ children }: { children: ReactNode }) {
           </span>
         </div>
       </header>
+
+      {/* ── 设置入口：右上角齿轮（取代底部导航里的「设置」） ───────── */}
+      <Link
+        to="/settings"
+        aria-label="设置"
+        className={cn(
+          'fixed top-3 right-4 z-[55] rounded-lg p-1.5 transition-colors',
+          pathname === '/settings' ? 'text-ink' : 'text-ink-4 hover:text-ink-2',
+        )}
+      >
+        <Settings size={20} />
+      </Link>
 
       {/* Spacer that reserves space for the fixed desktop header */}
       <div className="hidden md:block h-[52px] shrink-0" />

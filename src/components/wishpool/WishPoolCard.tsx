@@ -1,10 +1,20 @@
 import { useEffect, useRef, useState } from 'react'
+import { ChevronDown } from 'lucide-react'
 import { CardAlt, CardHeader, CardTitle } from '@/components/ui/card'
 import { useWishPoolStore } from '@/store/wishpool'
 import { useCountUp } from '@/hooks/useCountUp'
+import { db } from '@/lib/db'
 import { formatAmount } from '@/lib/utils'
 import { cn } from '@/lib/utils'
 import type { WishPoolData } from '@/types/db'
+
+/** One 忍住了 record under the active pool (商品名 + 金额). */
+interface SavingRow {
+  id: string
+  amount: number
+  description: string | null
+  recorded_at: string
+}
 
 export function WishPoolCard() {
   const { pool, loaded } = useWishPoolStore()
@@ -28,6 +38,11 @@ function ActivePoolCard({ pool }: { pool: WishPoolData }) {
   const prevSaved = useRef(pool.saved_amount)
   const [pulse, setPulse] = useState(false)
 
+  // Expandable 忍住明细 — fetch the savings records on first open, then refresh
+  // whenever the pooled amount changes (a new 忍住 was just added).
+  const [open, setOpen] = useState(false)
+  const [savings, setSavings] = useState<SavingRow[] | null>(null)
+
   useEffect(() => {
     if (pool.saved_amount > prevSaved.current) {
       setPulse(true)
@@ -37,6 +52,20 @@ function ActivePoolCard({ pool }: { pool: WishPoolData }) {
     }
     prevSaved.current = pool.saved_amount
   }, [pool.saved_amount])
+
+  useEffect(() => {
+    if (!open) return
+    let cancelled = false
+    void db
+      .from('savings_records')
+      .select('id, amount, description, recorded_at')
+      .eq('wish_pool_id', pool.id)
+      .order('recorded_at', { ascending: false })
+      .then(({ data }: { data: SavingRow[] | null }) => {
+        if (!cancelled) setSavings(data ?? [])
+      })
+    return () => { cancelled = true }
+  }, [open, pool.id, pool.saved_amount])
 
   return (
     <CardAlt className={cn('transition-shadow duration-500', pulse && 'shadow-lg shadow-amber-100/60')}>
@@ -70,6 +99,38 @@ function ActivePoolCard({ pool }: { pool: WishPoolData }) {
             <span> · 还差 {formatAmount(pool.target_amount - pool.saved_amount)}</span>
           )}
         </p>
+
+        {/* 忍住明细 — tap to expand the list of 攒进来的每一笔. */}
+        <button
+          onClick={() => setOpen((o) => !o)}
+          className="flex items-center justify-center gap-1 border-t-theme pt-2.5 text-[13px] text-ink-4 transition-colors hover:text-ink-3"
+        >
+          忍住明细
+          <ChevronDown size={13} className={cn('transition-transform', open && 'rotate-180')} />
+        </button>
+
+        {open && (
+          <div>
+            {savings == null ? (
+              <p className="py-1 text-center text-[13px] text-ink-4">加载中…</p>
+            ) : savings.length === 0 ? (
+              <p className="py-1 text-center text-[13px] text-ink-4">还没有忍住记录</p>
+            ) : (
+              <ul className="flex flex-col">
+                {savings.map((s) => (
+                  <li key={s.id} className="flex items-baseline justify-between gap-3 py-1.5 border-t-theme first:border-t-0">
+                    <span className="truncate text-[14px] text-ink-2">
+                      {(s.description ?? '').replace(/^忍住了：/, '') || '忍住了一笔'}
+                    </span>
+                    <span className="shrink-0 font-serif text-[14px] text-ink-2 tabular-nums">
+                      {formatAmount(Number(s.amount))}
+                    </span>
+                  </li>
+                ))}
+              </ul>
+            )}
+          </div>
+        )}
       </div>
     </CardAlt>
   )

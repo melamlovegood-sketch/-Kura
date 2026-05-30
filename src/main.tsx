@@ -3,6 +3,11 @@ import { createRoot } from 'react-dom/client'
 import { registerSW } from 'virtual:pwa-register'
 import './index.css'
 import { App } from './App'
+import { clearDefaultGuestSOP } from './lib/guestMode'
+
+// One-time cleanup: drop the legacy 5 default SOP rules from a guest's local
+// store before anything reads them (see migration 0013 for the cloud side).
+clearDefaultGuestSOP()
 
 // Service worker: registerType 'autoUpdate' makes the new SW take over and
 // reload the page automatically once an update is detected. The piece the

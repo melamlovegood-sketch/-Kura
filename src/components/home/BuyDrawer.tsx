@@ -5,7 +5,6 @@ import { Button } from '@/components/ui/button'
 import { ImageDropZone } from '@/components/ui/image-drop-zone'
 import { useSettingsStore } from '@/store/settings'
 import { usePrinciplesStore } from '@/store/principles'
-import { useImpulseStore } from '@/store/impulse'
 import { useWishlistStore } from '@/store/wishlist'
 import { useWishPoolStore } from '@/store/wishpool'
 import { usePriceTrackStore } from '@/store/priceTrack'
@@ -23,16 +22,15 @@ type Exit = 'impulse' | 'wishlist' | 'buy' | 'track'
  * user-chosen exits (bug8) — the app never auto-decides a cooldown by category:
  *
  *   忍住，先忍忍   → 即时决定，不调 AI：弹「忍住了多少钱」确认框，确认后把这笔
- *                    钱攒进许愿池 (savings_records) + 记一笔冲动 (impulse_records)，
- *                    绝不写 wishlist_items
+ *                    钱攒进许愿池 (savings_records)，绝不写 wishlist_items，也不写
+ *                    impulse_records——「忍住」就是一次了结，只攒钱、触发里程碑彩蛋
  *   加进清单再想想 → 待购清单 (wishlist_items, the active reconsideration list)
  *   确定要买，记一笔 → 执行层记账 (skip the cooldown entirely, record the buy)
  */
 export function BuyDrawer({ onClose }: { onClose: () => void }) {
   const navigate = useNavigate()
-  const { adapter, cooldownHours } = useSettingsStore()
+  const { adapter } = useSettingsStore()
   const principlesStore = usePrinciplesStore()
-  const impulseStore = useImpulseStore()
   const wishlistStore = useWishlistStore()
   const wishPoolStore = useWishPoolStore()
   const priceTrackStore = usePriceTrackStore()
@@ -115,8 +113,8 @@ export function BuyDrawer({ onClose }: { onClose: () => void }) {
     setHoldOpen(true)
   }
 
-  // 确认忍住 → ① 把这笔钱攒进许愿池（有目标直接攒入，没目标先暂存，等目标确立后
-  // 回填）② 记一笔冲动记录。绝不写 wishlist_items。
+  // 确认忍住 → 只把这笔钱攒进许愿池（有目标直接攒入，没目标先暂存，等目标确立后
+  // 回填）。绝不写 wishlist_items，也不写 impulse_records。
   async function handleHoldConfirm() {
     if (busy) return
     setBusy('impulse')
@@ -127,10 +125,6 @@ export function BuyDrawer({ onClose }: { onClose: () => void }) {
         if (wishPoolStore.pool) await wishPoolStore.addSavings(holdAmount, desc)
         else wishPoolStore.stashSavings(holdAmount, desc)
       }
-      await impulseStore.add(
-        { item_name: itemName, estimated_price: holdAmount > 0 ? holdAmount : null, season_tag: 'year_round', source: '我现在想买' },
-        cooldownHours,
-      )
       setHoldOpen(false)
       onClose()
     } catch (err) {

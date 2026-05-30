@@ -40,3 +40,27 @@ export function clearGuestData(): void {
     }
   }
 }
+
+/**
+ * The 5 default SOP rules that earlier builds seeded into a guest's local
+ * `sop_rules` table. They were placeholder copy, not real user content (see
+ * migration 0013 for the cloud-side delete), so on startup we strip any of them
+ * that are still sitting in localStorage. User-authored rules are untouched —
+ * only rows whose title matches a default are removed.
+ */
+const DEFAULT_SOP_TITLES = ['裤子', '上衣', '搜索决策', '品牌优先', '计时器']
+
+export function clearDefaultGuestSOP(): void {
+  try {
+    const raw = localStorage.getItem(GUEST_TABLE_PREFIX + 'sop_rules')
+    if (!raw) return
+    const rows = JSON.parse(raw)
+    if (!Array.isArray(rows)) return
+    const kept = rows.filter((r) => !DEFAULT_SOP_TITLES.includes((r as { title?: string })?.title ?? ''))
+    if (kept.length !== rows.length) {
+      localStorage.setItem(GUEST_TABLE_PREFIX + 'sop_rules', JSON.stringify(kept))
+    }
+  } catch {
+    // Malformed cache — leave it; the app will overwrite on next write.
+  }
+}

@@ -6,6 +6,7 @@ import { Wishlist } from '@/pages/Wishlist'
 import { Execution } from '@/pages/Execution'
 import { Review } from '@/pages/Review'
 import { Billing } from '@/pages/Billing'
+import { ImportHistory } from '@/pages/ImportHistory'
 import { Settings } from '@/pages/Settings'
 import { ConsumptionView } from '@/pages/ConsumptionView'
 import { SplashScreen } from '@/components/SplashScreen'
@@ -113,6 +114,7 @@ export function App() {
           <Route path="/execution" element={<Execution />} />
           <Route path="/review"    element={<Review />} />
           <Route path="/billing"   element={<Billing />} />
+          <Route path="/import-history" element={<ImportHistory />} />
           <Route path="/settings"  element={<Settings />} />
           <Route path="/consumption" element={<ConsumptionView />} />
         </Routes>

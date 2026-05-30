@@ -1,4 +1,5 @@
 import { useEffect, useRef, useState } from 'react'
+import { Link } from 'react-router-dom'
 import { ChevronDown, ChevronLeft, ChevronRight, Paperclip, Sparkles, X } from 'lucide-react'
 import { Card } from '@/components/ui/card'
 import { Button } from '@/components/ui/button'
@@ -23,7 +24,7 @@ interface TxRow {
   category: ItemCategory
   category_main: CategoryMain
   description: string | null
-  source: 'text' | 'screenshot' | null
+  source: 'text' | 'screenshot' | 'import' | null
   created_at: string
 }
 
@@ -157,6 +158,15 @@ export function Billing() {
 
       {/* ② AI 记账入口 */}
       <AIRecordCard onSaved={handleSaved} />
+
+      {/* 历史账单批量导入入口 */}
+      <Link
+        to="/import-history"
+        className="flex items-center justify-between rounded-2xl border-theme bg-card px-4 py-3 shadow-card transition-colors hover:bg-card-alt"
+      >
+        <span className="text-[14px] text-ink-2">📥 导入历史账单</span>
+        <ChevronRight size={16} className="text-ink-4" />
+      </Link>
 
       {/* ③ 明细 / 日历 / 趋势 */}
       {view === 'detail' && <TransactionDetail txns={txns} />}

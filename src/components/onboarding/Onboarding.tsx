@@ -1,4 +1,5 @@
 import { useEffect, useState } from 'react'
+import { useNavigate } from 'react-router-dom'
 import { Button } from '@/components/ui/button'
 import { Input } from '@/components/ui/input'
 import { db } from '@/lib/db'
@@ -343,6 +344,14 @@ function PrinciplesStep({ onSkip, onNext }: { onSkip: () => void; onNext: () => 
 /* ── Step 5: Done ─────────────────────────────────────────────────────── */
 
 function DoneStep({ onStart }: { onStart: () => void }) {
+  const navigate = useNavigate()
+
+  // 「去导入」：先结束引导（隐藏覆盖层），再跳到历史账单导入页。
+  function goImport() {
+    onStart()
+    navigate('/import-history')
+  }
+
   return (
     <StepShell>
       <div className="text-center">
@@ -351,6 +360,17 @@ function DoneStep({ onStart }: { onStart: () => void }) {
           记账、忍住、许愿池——<br />从对话框开始就行。
         </p>
       </div>
+
+      {/* 可选：导入过去几个月的账单 */}
+      <div className="flex flex-col gap-2 rounded-xl bg-card-alt p-4 text-left">
+        <p className="text-[14px] font-medium text-ink-2">📥 导入过去几个月的账单？（可跳过）</p>
+        <p className="text-[12px] leading-relaxed text-ink-4">AI 帮你分析，第一天就有完整数据</p>
+        <div className="mt-1 flex gap-2">
+          <Button variant="ghost" size="sm" className="flex-1" onClick={onStart}>跳过</Button>
+          <Button size="sm" className="flex-1" onClick={goImport}>去导入 →</Button>
+        </div>
+      </div>
+
       <Button className="w-full" onClick={onStart}>开始使用</Button>
     </StepShell>
   )

@@ -17,8 +17,23 @@ interface ChatTurn { role: 'user' | 'assistant'; text: string }
  * the story, and forbids global questions). This card replaces the standalone
  * PersonaCard: story is the process, persona is the conclusion — one card.
  */
+/**
+ * Drop a persona paragraph from an already-generated story body. The persona is
+ * now shown only in the card header, but stories written before that change still
+ * carry a 「本月人格：…」/「消费人格：…」 paragraph in their text. Split on blank
+ * lines and remove any block whose first line is a persona label.
+ */
+function stripPersonaParagraph(text: string): string {
+  return text
+    .split(/\n{2,}/)
+    .filter((para) => !/^\s*(本月|当月)?(消费)?人格\s*[:：]/.test(para))
+    .join('\n\n')
+    .trim()
+}
+
 export function MonthlyStoryCard({ story }: { story: MonthlyStory }) {
   const persona = story.snapshot.persona
+  const body = stripPersonaParagraph(story.story)
 
   return (
     <Card>
@@ -40,7 +55,7 @@ export function MonthlyStoryCard({ story }: { story: MonthlyStory }) {
       )}
 
       {/* ── the story ── */}
-      <p className="whitespace-pre-wrap text-[15px] leading-relaxed text-ink-2">{story.story}</p>
+      <p className="whitespace-pre-wrap text-[15px] leading-relaxed text-ink-2">{body}</p>
 
       {/* ── embedded month-scoped chat ── */}
       <div className="mt-4 border-t-theme pt-4">

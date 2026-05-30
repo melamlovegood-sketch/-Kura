@@ -1,5 +1,6 @@
 import { useMemo } from 'react'
 import { useNavigate } from 'react-router-dom'
+import { useShallow } from 'zustand/react/shallow'
 import { TrendingDown } from 'lucide-react'
 import { Card } from '@/components/ui/card'
 import { usePriceTrackStore, activeDrops } from '@/store/priceTrack'
@@ -13,14 +14,19 @@ import { formatAmount } from '@/lib/utils'
  */
 export function PriceDropCard() {
   const navigate = useNavigate()
-  // Subscribe to the raw slices (each a stable reference until `set` replaces it)
-  // and derive drops with useMemo. Calling activeDrops directly as a selector
-  // would return a freshly-built array every render → Zustand sees a new snapshot
-  // → "getSnapshot should be cached" → infinite re-render → white screen.
-  const tracks = usePriceTrackStore((s) => s.tracks)
-  const records = usePriceTrackStore((s) => s.records)
-  const dismissedDrops = usePriceTrackStore((s) => s.dismissedDrops)
-  const dismissDrop = usePriceTrackStore((s) => s.dismissDrop)
+  // Pull the raw slices in ONE useShallow selector: it returns a stable object
+  // (shallow-compared, so an unchanged store yields the same snapshot) instead of
+  // a new reference every render. `activeDrops` is then derived with useMemo —
+  // running it directly inside the selector would build a fresh array each call →
+  // "getSnapshot should be cached" → Maximum update depth exceeded → white screen.
+  const { tracks, records, dismissedDrops, dismissDrop } = usePriceTrackStore(
+    useShallow((s) => ({
+      tracks: s.tracks,
+      records: s.records,
+      dismissedDrops: s.dismissedDrops,
+      dismissDrop: s.dismissDrop,
+    })),
+  )
 
   const drops = useMemo(
     () => activeDrops({ tracks, records, dismissedDrops }),

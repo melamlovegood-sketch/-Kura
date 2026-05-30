@@ -28,11 +28,15 @@ interface AchievementsStore {
   streak: Streak
   stats: AchievementStats | null
   loaded: boolean
+  /** Keys unlocked in the most recent recompute/unlock — drives the Toast. Transient. */
+  justUnlocked: AchievementKey[]
   load: () => Promise<void>
   /** Recompute streak + every stat-driven badge from the DB. Idempotent. */
   recompute: () => Promise<void>
   /** Unlock an event-only badge (e.g. light_travel from the duplicate-warning flow). */
   unlock: (key: AchievementKey) => Promise<void>
+  /** Clear the just-unlocked queue once the Toast has consumed it. */
+  clearJustUnlocked: () => void
 }
 
 /**
@@ -66,6 +70,9 @@ export const useAchievementsStore = create<AchievementsStore>()(persist((set, ge
   streak: { current: 0, longest: 0 },
   stats: null,
   loaded: false,
+  justUnlocked: [],
+
+  clearJustUnlocked: () => set({ justUnlocked: [] }),
 
   load: async () => {
     const [{ data: ach }, { data: streakRow }] = await Promise.all([
@@ -153,10 +160,12 @@ export const useAchievementsStore = create<AchievementsStore>()(persist((set, ge
         .upsert(toUnlock.map((achievement_key) => ({ achievement_key, user_id })), { onConflict: 'user_id,achievement_key', ignoreDuplicates: true })
     }
 
+    const freshUnlocks = toUnlock.filter((k) => !get().unlocked.includes(k))
     set({
       stats,
       streak: { current: streakCurrent, longest },
-      unlocked: [...get().unlocked, ...toUnlock.filter((k) => !get().unlocked.includes(k))],
+      unlocked: [...get().unlocked, ...freshUnlocks],
+      ...(freshUnlocks.length > 0 ? { justUnlocked: freshUnlocks } : {}),
     })
   },
 
@@ -168,6 +177,7 @@ export const useAchievementsStore = create<AchievementsStore>()(persist((set, ge
       .upsert([{ achievement_key: key, user_id }], { onConflict: 'user_id,achievement_key', ignoreDuplicates: true })
 
     const unlocked = [...get().unlocked, key]
+    const justUnlocked: AchievementKey[] = [key]
 
     // Unlocking this badge may complete the set → collector.
     const set2 = new Set<string>(unlocked)
@@ -176,9 +186,10 @@ export const useAchievementsStore = create<AchievementsStore>()(persist((set, ge
         .from('achievements')
         .upsert([{ achievement_key: 'squirrel_collector', user_id }], { onConflict: 'user_id,achievement_key', ignoreDuplicates: true })
       unlocked.push('squirrel_collector')
+      justUnlocked.push('squirrel_collector')
     }
 
-    set({ unlocked })
+    set({ unlocked, justUnlocked })
   },
 }), {
   name: 'kura-achievements',

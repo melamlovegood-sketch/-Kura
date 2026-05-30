@@ -8,6 +8,7 @@ import { usePrinciplesStore } from '@/store/principles'
 import { useWishlistStore } from '@/store/wishlist'
 import { useWishPoolStore } from '@/store/wishpool'
 import { usePriceTrackStore } from '@/store/priceTrack'
+import { useAchievementsStore } from '@/store/achievements'
 import { parseProduct, type ParsedProduct } from '@/lib/parseProduct'
 import { parsePriceTrack } from '@/lib/parsePriceTrack'
 import { fileToBase64, formatAmount } from '@/lib/utils'
@@ -124,6 +125,9 @@ export function BuyDrawer({ onClose }: { onClose: () => void }) {
         const desc = `忍住了：${itemName}`
         if (wishPoolStore.pool) await wishPoolStore.addSavings(holdAmount, desc)
         else wishPoolStore.stashSavings(holdAmount, desc)
+        // Re-check achievements so 「第一颗栗子」/「铁石心肠」 unlock (and toast)
+        // right away instead of waiting for the next app launch.
+        void useAchievementsStore.getState().recompute()
       }
       setHoldOpen(false)
       onClose()

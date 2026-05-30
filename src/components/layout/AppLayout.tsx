@@ -2,6 +2,7 @@ import { Link, useLocation } from 'react-router-dom'
 import { Home, ListTodo, ShoppingBag, BookOpen, Wallet, Settings } from 'lucide-react'
 import { cn } from '@/lib/utils'
 import { type ReactNode } from 'react'
+import { AchievementToast } from '@/components/achievements/AchievementToast'
 
 const NAV_ITEMS = [
   { to: '/',          Icon: Home,        label: '主页' },
@@ -16,6 +17,9 @@ export function AppLayout({ children }: { children: ReactNode }) {
 
   return (
     <div className="flex h-full flex-col">
+      {/* 成就解锁 Toast（全局，2 秒自动消失） */}
+      <AchievementToast />
+
       {/* ── Desktop top bar (md+) ─────────────────────────────── */}
       <header className="hidden md:flex fixed top-0 left-0 right-0 z-50 h-[52px] items-center justify-center bg-page border-b-theme">
         <div className="flex items-center gap-2.5">

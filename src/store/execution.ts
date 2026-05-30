@@ -18,11 +18,28 @@ export interface SOPRule {
   order: number
 }
 
+/**
+ * Default SOP rules every new user starts with. These used to be seeded globally
+ * in schema.sql, but migration 0009 (multi-user) TRUNCATEd that global seed since
+ * every row now needs an owner. They're re-seeded per-user when onboarding ends
+ * (see seedDefaultsIfEmpty + Onboarding.finish).
+ */
+const DEFAULT_SOP_RULES: { title: string; content: string; order: number }[] = [
+  { title: '裤子',     content: '裤子只去线下试穿，满意再线上买', order: 1 },
+  { title: '上衣',     content: '上衣优先有品牌背书的；贵的好牌子去闲鱼找二手', order: 2 },
+  { title: '搜索决策', content: '搜索品类时看AI总结，前几个推荐快速决断；决断不了就都买货比三家', order: 3 },
+  { title: '品牌优先', content: '优先从品牌库里选信任品牌', order: 4 },
+  { title: '计时器',   content: '购物前设定计时器，时间到立刻下单当前最优选', order: 5 },
+]
+
 export interface ExecutionStore {
   brands: BrandEntry[]
   sopRules: SOPRule[]
   loaded: boolean
   load: () => Promise<void>
+  /** Seed the default SOP rules for a brand-new user. Idempotent (no-op if any
+   *  SOP rule already exists for this user). Called when onboarding finishes. */
+  seedDefaultsIfEmpty: () => Promise<void>
   brandsForCategory: (category: string) => BrandEntry[]
   addBrand: (category: string, brandName: string, note?: string) => Promise<void>
   updateWeight: (id: string, delta: 1 | -1) => Promise<void>
@@ -52,6 +69,26 @@ export const useExecutionStore = create<ExecutionStore>()(persist((set, get) => 
       sopRules: (sopRes.data as SOPRule[]) ?? [],
       loaded: true,
     })
+  },
+
+  seedDefaultsIfEmpty: async () => {
+    const userId = await getCurrentUserId()
+    // Idempotency: only seed when this user has zero SOP rules. The count query
+    // runs under RLS so it sees only the caller's rows — re-running onboarding
+    // (or a user who already added their own rules) won't get duplicates.
+    const { count } = await supabase
+      .from('sop_rules')
+      .select('id', { count: 'exact', head: true })
+    if ((count ?? 0) > 0) return
+
+    const { data } = await supabase
+      .from('sop_rules')
+      .insert(DEFAULT_SOP_RULES.map((r) => ({ ...r, user_id: userId })))
+      .select()
+
+    if (data) {
+      set({ sopRules: (data as SOPRule[]).sort((a, b) => a.order - b.order) })
+    }
   },
 
   brandsForCategory: (category) => {

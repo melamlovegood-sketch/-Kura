@@ -7,6 +7,7 @@ import { useSettingsStore } from '@/store/settings'
 import { usePrinciplesStore } from '@/store/principles'
 import { useImpulseStore } from '@/store/impulse'
 import { useWishlistStore } from '@/store/wishlist'
+import { useWishPoolStore } from '@/store/wishpool'
 import { usePriceTrackStore } from '@/store/priceTrack'
 import { parseProduct, type ParsedProduct } from '@/lib/parseProduct'
 import { parsePriceTrack } from '@/lib/parsePriceTrack'
@@ -21,7 +22,9 @@ type Exit = 'impulse' | 'wishlist' | 'buy' | 'track'
  * `routeIntent` parser unchanged; the parsed product then flows to one of THREE
  * user-chosen exits (bug8) — the app never auto-decides a cooldown by category:
  *
- *   忍住，先忍忍   → 冲动记录 (impulse_records, carries the cooldown countdown)
+ *   忍住，先忍忍   → 即时决定，不调 AI：弹「忍住了多少钱」确认框，确认后把这笔
+ *                    钱攒进许愿池 (savings_records) + 记一笔冲动 (impulse_records)，
+ *                    绝不写 wishlist_items
  *   加进清单再想想 → 待购清单 (wishlist_items, the active reconsideration list)
  *   确定要买，记一笔 → 执行层记账 (skip the cooldown entirely, record the buy)
  */
@@ -31,6 +34,7 @@ export function BuyDrawer({ onClose }: { onClose: () => void }) {
   const principlesStore = usePrinciplesStore()
   const impulseStore = useImpulseStore()
   const wishlistStore = useWishlistStore()
+  const wishPoolStore = useWishPoolStore()
   const priceTrackStore = usePriceTrackStore()
 
   const [text, setText] = useState('')
@@ -42,6 +46,9 @@ export function BuyDrawer({ onClose }: { onClose: () => void }) {
   const [error, setError] = useState<string | null>(null)
   // 蹲一下 result message — kept inline so the user sees what was recorded.
   const [notice, setNotice] = useState<string | null>(null)
+  // 「忍住」确认框：是否展开 + 忍住的金额（从输入正则预填，可改）。
+  const [holdOpen, setHoldOpen] = useState(false)
+  const [holdAmount, setHoldAmount] = useState(0)
   const abortRef = useRef<AbortController | null>(null)
   const fileRef = useRef<HTMLInputElement>(null)
 
@@ -99,15 +106,38 @@ export function BuyDrawer({ onClose }: { onClose: () => void }) {
     }
   }
 
-  // 忍住，先忍忍 → 冲动记录（带冷静期倒计时）
+  // 忍住，先忍忍 → 即时决定，不走 AI 解析。直接用正则从输入里抓金额预填到确认框，
+  // 让用户确认「忍住了多少钱」后再落库。
   function handleImpulse() {
-    return runExit('impulse', async (product) => {
+    if (busy) return
+    const m = text.match(/[¥￥]?\s*(\d+(?:\.\d+)?)/)
+    setHoldAmount(m ? Number(m[1]) : 0)
+    setHoldOpen(true)
+  }
+
+  // 确认忍住 → ① 把这笔钱攒进许愿池（有目标直接攒入，没目标先暂存，等目标确立后
+  // 回填）② 记一笔冲动记录。绝不写 wishlist_items。
+  async function handleHoldConfirm() {
+    if (busy) return
+    setBusy('impulse')
+    try {
+      const itemName = text.trim() || '忍住了一笔'
+      if (holdAmount > 0) {
+        const desc = `忍住了：${itemName}`
+        if (wishPoolStore.pool) await wishPoolStore.addSavings(holdAmount, desc)
+        else wishPoolStore.stashSavings(holdAmount, desc)
+      }
       await impulseStore.add(
-        { item_name: product.item_name, estimated_price: product.estimated_price, season_tag: 'year_round', source: '我现在想买' },
+        { item_name: itemName, estimated_price: holdAmount > 0 ? holdAmount : null, season_tag: 'year_round', source: '我现在想买' },
         cooldownHours,
       )
+      setHoldOpen(false)
       onClose()
-    })
+    } catch (err) {
+      setError(`出错了：${(err as Error).message || '请稍后重试'}`)
+    } finally {
+      setBusy(null)
+    }
   }
 
   // 加进清单再想想 → 待购清单
@@ -234,10 +264,10 @@ export function BuyDrawer({ onClose }: { onClose: () => void }) {
         <div className="mt-5 flex flex-col gap-2.5">
           <Button
             variant="outline"
-            onClick={() => void handleImpulse()}
+            onClick={() => handleImpulse()}
             disabled={!hasInput || !!busy}
           >
-            {busy === 'impulse' ? '分析中…' : '忍住，先忍忍'}
+            忍住，先忍忍
           </Button>
           <Button
             variant="outline"
@@ -263,6 +293,40 @@ export function BuyDrawer({ onClose }: { onClose: () => void }) {
           </button>
         </div>
       </ImageDropZone>
+
+      {/* 忍住确认框：问「忍住了多少钱」，确认后攒进许愿池 + 记冲动，不写清单。 */}
+      {holdOpen && (
+        <div
+          className="fixed inset-0 z-[60] flex items-end justify-center bg-black/30"
+          style={{ animation: 'sheet-backdrop-in 0.2s ease-out' }}
+          onClick={(e) => { if (e.target === e.currentTarget && !busy) setHoldOpen(false) }}
+        >
+          <div className="w-full max-w-[640px] rounded-t-2xl bg-card px-6 pt-6 pb-8 [animation:sheet-slide-up_0.28s_cubic-bezier(0.32,0.72,0,1)]">
+            <h3 className="text-[17px] font-medium text-ink">忍住了多少钱？</h3>
+            <p className="mt-1 mb-4 text-[13px] text-ink-4">把这笔忍住的钱攒进许愿池</p>
+            <div className="flex items-center gap-2 rounded-xl bg-card-alt px-4 py-3">
+              <input
+                autoFocus
+                type="number"
+                inputMode="decimal"
+                value={holdAmount || ''}
+                onChange={(e) => setHoldAmount(Number(e.target.value) || 0)}
+                placeholder="0"
+                className="flex-1 bg-transparent font-serif text-[22px] text-ink outline-none"
+              />
+              <span className="text-[15px] text-ink-4">元</span>
+            </div>
+            <div className="mt-4 flex justify-end gap-2">
+              <Button variant="ghost" size="sm" onClick={() => setHoldOpen(false)} disabled={!!busy}>
+                取消
+              </Button>
+              <Button size="sm" onClick={() => void handleHoldConfirm()} disabled={!!busy}>
+                {busy === 'impulse' ? '保存中…' : '存进许愿池 ✓'}
+              </Button>
+            </div>
+          </div>
+        </div>
+      )}
     </div>
   )
 }

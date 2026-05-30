@@ -1,13 +1,17 @@
 import { useEffect, useRef, useState } from 'react'
 import { useNavigate, useLocation } from 'react-router-dom'
-import { ChevronDown, ChevronRight, Pencil, Plus, X } from 'lucide-react'
+import { ChevronDown, ChevronRight, Paperclip, Pencil, Plus, Sparkles, X } from 'lucide-react'
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card'
 import { Button } from '@/components/ui/button'
+import { ImageDropZone } from '@/components/ui/image-drop-zone'
 import { useExecutionStore, type BrandEntry, type SOPRule, type ExecutionStore } from '@/store/execution'
 import { useReviewStore, type ReviewStore } from '@/store/review'
 import { useSettingsStore } from '@/store/settings'
+import { usePrinciplesStore } from '@/store/principles'
 import { addExecutionTransaction } from '@/store/transactions'
 import { useBudgetStore } from '@/store/budget'
+import { parseProduct } from '@/lib/parseProduct'
+import { fileToBase64 } from '@/lib/utils'
 import { DecisionBrief } from '@/components/execution/DecisionBrief'
 import { ResearchChecklist } from '@/components/execution/ResearchChecklist'
 import { DecisionChat } from '@/components/execution/DecisionChat'
@@ -19,7 +23,7 @@ type Phase =
   | { name: 'setup' }
   | { name: 'brief'; category: string }
   | { name: 'execute'; category: string; sessionId: string; mode: DecisionMode; startedAt: number; totalSeconds: number; ctx: ExecutionContext }
-  | { name: 'recording'; category: string; sessionId: string; startedAt: number }
+  | { name: 'recording'; category: string; sessionId: string; startedAt: number; prefillName?: string; prefillAmount?: number | null }
   | { name: 'wrapup'; category: string; sessionId: string; itemName: string; brand: string; amount: number; elapsedSeconds: number }
   | { name: 'done'; decision: 'skipped' | 'undecided' }
 
@@ -34,9 +38,25 @@ export function Execution() {
   const [phase, setPhase] = useState<Phase>({ name: 'setup' })
 
   // Optional prefill passed from Home's intent routing (e.g. "我要去买球鞋").
-  const prefill = (location.state as { prefill?: { category?: string; estimatedPrice?: number | null } } | null)?.prefill
+  // `skipToRecording` is set when the user chose "确定要买，记一笔" in the buy drawer
+  // (bug8) — that exit skips the cooldown/timer and jumps straight to recording.
+  const prefill = (location.state as { prefill?: { category?: string; estimatedPrice?: number | null; skipToRecording?: boolean } } | null)?.prefill
   const initialCategory = prefill?.category ?? ''
   const estimatedPrice  = prefill?.estimatedPrice ?? null
+
+  // "确定要买" fast-path: open a session and drop straight into recording. Tolerate
+  // a session-create failure by recording without one (session id stays empty,
+  // which addExecutionTransaction coalesces to null).
+  const fastDone = useRef(false)
+  useEffect(() => {
+    if (!prefill?.skipToRecording || fastDone.current) return
+    fastDone.current = true
+    void (async () => {
+      let sessionId = ''
+      try { sessionId = await execStore.createSession(initialCategory || '生活必需品', durationSeconds) } catch { /* record without a session */ }
+      setPhase({ name: 'recording', category: initialCategory || '生活必需品', sessionId, startedAt: Date.now(), prefillName: initialCategory, prefillAmount: estimatedPrice })
+    })()
+  }, []) // eslint-disable-line react-hooks/exhaustive-deps
 
   return (
     <div className="flex flex-col gap-4 pt-6 w-full max-w-[640px] mx-auto px-6">
@@ -62,7 +82,7 @@ export function Execution() {
 
       {phase.name === 'execute' && (
         <ExecutePhase phase={phase}
-          onBuy={() => setPhase({ name: 'recording', category: phase.category, sessionId: phase.sessionId, startedAt: phase.startedAt })}
+          onBuy={() => setPhase({ name: 'recording', category: phase.category, sessionId: phase.sessionId, startedAt: phase.startedAt, prefillName: initialCategory || phase.category, prefillAmount: phase.ctx.estimatedPrice ?? estimatedPrice })}
           onSkip={async () => { await execStore.endSession(phase.sessionId, 'skipped'); setPhase({ name: 'done', decision: 'skipped' }) }}
           onUndecided={async () => { await execStore.endSession(phase.sessionId, 'undecided'); setPhase({ name: 'done', decision: 'undecided' }) }}
         />
@@ -205,14 +225,16 @@ function RecordingPhase({ phase, execStore, reviewStore, onSaved }: {
   phase: Extract<Phase, { name: 'recording' }>; execStore: ExecutionStore
   reviewStore: ReviewStore; onSaved: (r: { itemName: string; brand: string; amount: number }) => void
 }) {
-  const [itemName, setItemName] = useState('')
-  const [amount, setAmount]     = useState(0)
+  const [itemName, setItemName] = useState(phase.prefillName?.trim() ?? '')
+  const [amount, setAmount]     = useState(phase.prefillAmount ?? 0)
   const [brand, setBrand]       = useState('')
   const [saving, setSaving]     = useState(false)
+  const [error, setError]       = useState<string | null>(null)
   const brands = execStore.brandsForCategory(phase.category)
 
   async function handleConfirm() {
-    if (amount <= 0) return; setSaving(true)
+    if (amount <= 0) return
+    setSaving(true); setError(null)
     try {
       const name = itemName.trim() || phase.category
       const brandName = brand.trim()
@@ -226,6 +248,9 @@ function RecordingPhase({ phase, execStore, reviewStore, onSaved }: {
       const txId = await addExecutionTransaction({ amount, description: name, executionCategory: phase.category, executionSessionId: phase.sessionId })
       await reviewStore.createTasksForPurchase({ item_name: name, brand: brandName || undefined, category: phase.category, transactionId: txId })
       onSaved({ itemName: name, brand: brandName, amount })
+    } catch (err) {
+      // Surface the failure (e.g. a 401/400 write) instead of silently doing nothing.
+      setError(`保存失败：${(err as Error).message || '请稍后重试'}`)
     } finally { setSaving(false) }
   }
 
@@ -233,6 +258,12 @@ function RecordingPhase({ phase, execStore, reviewStore, onSaved }: {
     <Card>
       <CardHeader><CardTitle>记录购买</CardTitle></CardHeader>
       <CardContent className="flex flex-col gap-4">
+        {/* AI 填表：自然语言 / 截图 → 自动填入金额与商品（bug2） */}
+        <RecordingAIFill onFilled={(p) => {
+          if (p.item_name) setItemName(p.item_name)
+          if (p.estimated_price != null && p.estimated_price > 0) setAmount(p.estimated_price)
+        }} />
+
         <div className="flex items-baseline gap-1.5 border-b-theme pb-3">
           <span className="text-lg text-ink-4">¥</span>
           <input type="number" value={amount || ''} onChange={(e) => setAmount(Number(e.target.value) || 0)} placeholder="0" autoFocus
@@ -259,11 +290,76 @@ function RecordingPhase({ phase, execStore, reviewStore, onSaved }: {
         )}
 
         <p className="text-[13px] text-ink-4">会自动生成 7 天和 30 天复盘提醒</p>
+        {error && <p className="text-[13px] text-red-500">{error}</p>}
         <div className="flex justify-end border-t-theme pt-3">
           <Button onClick={() => void handleConfirm()} disabled={saving || amount <= 0}>{saving ? '保存中…' : '确认购买'}</Button>
         </div>
       </CardContent>
     </Card>
+  )
+}
+
+/**
+ * AI quick-fill for the buy-recording form (bug2): reuses the home dialog's
+ * natural-language + screenshot parsing so the user no longer has to hand-type
+ * the amount / item. Manual editing of the fields below remains the fallback.
+ */
+function RecordingAIFill({ onFilled }: { onFilled: (p: { item_name: string; estimated_price: number | null }) => void }) {
+  const adapter = useSettingsStore((s) => s.adapter)
+  const principles = usePrinciplesStore((s) => s.items)
+  const [text, setText] = useState('')
+  const [image, setImage] = useState<{ name: string; base64: string } | null>(null)
+  const [busy, setBusy] = useState(false)
+  const [error, setError] = useState<string | null>(null)
+  const fileRef = useRef<HTMLInputElement>(null)
+
+  const hasInput = !!text.trim() || !!image
+
+  async function handleParse() {
+    if (!hasInput || busy) return
+    if (!adapter) { setError('请先在设置里填写 API Key'); return }
+    setBusy(true); setError(null)
+    try {
+      const p = await parseProduct(adapter, text, image?.base64, undefined, principles.map((x) => x.content))
+      onFilled({ item_name: p.item_name, estimated_price: p.estimated_price })
+      setText(''); setImage(null)
+    } catch (err) {
+      setError(`解析失败：${(err as Error).message || '请稍后重试'}`)
+    } finally { setBusy(false) }
+  }
+
+  return (
+    <ImageDropZone
+      onFile={(base64, file) => { setImage({ name: file.name, base64 }); setError(null) }}
+      className="flex flex-col gap-2 rounded-xl border-theme bg-card-alt p-3"
+    >
+      <div className="flex items-center gap-1.5 text-[12px] font-medium text-ink-3">
+        <Sparkles size={13} /> 用一句话或截图自动填写
+      </div>
+      <textarea
+        value={text}
+        onChange={(e) => { setText(e.target.value); setError(null) }}
+        placeholder="如：刚买了 Nike 跑鞋 699，或拖入支付截图…"
+        rows={2}
+        className="w-full resize-none bg-transparent text-[14px] text-ink outline-none placeholder:text-ink-4"
+      />
+      {image && (
+        <div className="flex items-center gap-2">
+          <span className="max-w-[200px] truncate text-[12px] text-ink-4">{image.name}</span>
+          <button onClick={() => setImage(null)} className="text-ink-4 transition-colors hover:text-ink-3"><X size={12} /></button>
+        </div>
+      )}
+      {error && <p className="text-[12px] text-red-500">{error}</p>}
+      <div className="flex items-center gap-3">
+        <button onClick={() => fileRef.current?.click()} className="flex items-center gap-1 text-[12px] text-ink-4 transition-colors hover:text-ink-3">
+          <Paperclip size={13} /> 上传截图
+        </button>
+        <input ref={fileRef} type="file" accept="image/*" capture="environment" className="hidden"
+          onChange={async (e) => { const f = e.target.files?.[0]; if (!f) return; setImage({ name: f.name, base64: await fileToBase64(f) }); e.target.value = '' }} />
+        <div className="flex-1" />
+        <Button size="sm" onClick={() => void handleParse()} disabled={!hasInput || busy}>{busy ? '识别中…' : 'AI 填写'}</Button>
+      </div>
+    </ImageDropZone>
   )
 }
 

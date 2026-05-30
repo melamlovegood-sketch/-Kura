@@ -70,7 +70,13 @@ function WishlistItemCard({ item, isPoolFocus, isFirst, isLast, onMoveUp, onMove
 }) {
   const [pinning, setPinning] = useState(false)
   const [showWorth, setShowWorth] = useState(false)
-  async function handlePin() { setPinning(true); try { await onPin() } finally { setPinning(false) } }
+  const [pinError, setPinError] = useState<string | null>(null)
+  async function handlePin() {
+    setPinning(true); setPinError(null)
+    try { await onPin() }
+    catch (err) { setPinError((err as Error).message || '设为目标失败，请重试') }
+    finally { setPinning(false) }
+  }
 
   return (
     <Card className={cn('transition-colors', isPoolFocus && 'bg-amber-50/60 border-amber-200')}>
@@ -136,6 +142,8 @@ function WishlistItemCard({ item, isPoolFocus, isFirst, isLast, onMoveUp, onMove
             值不值？
           </button>
         </div>
+
+        {pinError && <p className="text-[12px] text-red-500">{pinError}</p>}
 
         {showWorth && <WorthItCard item={item} onClose={() => setShowWorth(false)} />}
       </CardContent>

@@ -6,46 +6,36 @@ import { ImageDropZone } from '@/components/ui/image-drop-zone'
 import { useSettingsStore } from '@/store/settings'
 import { usePrinciplesStore } from '@/store/principles'
 import { useImpulseStore } from '@/store/impulse'
-import { routeIntent } from '@/lib/ai/router'
+import { useWishlistStore } from '@/store/wishlist'
+import { parseProduct, type ParsedProduct } from '@/lib/parseProduct'
 import { fileToBase64, formatAmount } from '@/lib/utils'
-import type { IntentResult } from '@/lib/ai/types'
 
-type Product = { item_name: string; estimated_price: number | null }
-
-/**
- * Pull a buyable product out of whatever the intent router returned. The router
- * may classify a "想买 X" input as impulse / wishlist / execution / unknown — each
- * uses slightly different field names — so we coalesce, falling back to the raw
- * text so the user always gets a usable item name even on a low-confidence parse.
- */
-function extractProduct(result: IntentResult, fallbackText: string): Product {
-  const d = result.data as Record<string, unknown>
-  const name = [d.item_name, d.description, d.category, fallbackText]
-    .map((v) => (typeof v === 'string' ? v.trim() : ''))
-    .find((v) => v.length > 0) ?? fallbackText
-  const priceRaw = d.estimated_price ?? d.amount
-  const price = typeof priceRaw === 'number' && priceRaw > 0 ? priceRaw : null
-  return { item_name: name, estimated_price: price }
-}
+type Product = ParsedProduct
+type Exit = 'impulse' | 'wishlist' | 'buy'
 
 /**
  * The single bottom-sheet entry behind the home "我现在想买……" button. Reuses the
  * original AI dialog's input mechanics (free text + screenshot upload) and the
- * `routeIntent` parser unchanged; the parsed product then flows to one of two
- * exits — stash it as an impulse, or carry it into the execution layer to research.
+ * `routeIntent` parser unchanged; the parsed product then flows to one of THREE
+ * user-chosen exits (bug8) — the app never auto-decides a cooldown by category:
+ *
+ *   忍住，先忍忍   → 冲动记录 (impulse_records, carries the cooldown countdown)
+ *   加进清单再想想 → 待购清单 (wishlist_items, the active reconsideration list)
+ *   确定要买，记一笔 → 执行层记账 (skip the cooldown entirely, record the buy)
  */
 export function BuyDrawer({ onClose }: { onClose: () => void }) {
   const navigate = useNavigate()
   const { adapter, cooldownHours } = useSettingsStore()
   const principlesStore = usePrinciplesStore()
   const impulseStore = useImpulseStore()
+  const wishlistStore = useWishlistStore()
 
   const [text, setText] = useState('')
   const [image, setImage] = useState<{ file: File; base64: string } | null>(null)
   const [parsed, setParsed] = useState<Product | null>(null)
-  // Which exit is mid-flight ('impulse' | 'research'), so we can show a per-button
-  // busy state while the AI parse runs.
-  const [busy, setBusy] = useState<null | 'impulse' | 'research'>(null)
+  // Which exit is mid-flight, so we can show a per-button busy state while the
+  // AI parse / write runs.
+  const [busy, setBusy] = useState<null | Exit>(null)
   const [error, setError] = useState<string | null>(null)
   const abortRef = useRef<AbortController | null>(null)
   const fileRef = useRef<HTMLInputElement>(null)
@@ -82,47 +72,62 @@ export function BuyDrawer({ onClose }: { onClose: () => void }) {
     abortRef.current = ctrl
     setError(null)
 
-    const fallback = text.trim() || '（图片输入）'
     const principles = principlesStore.items.map((p) => p.content)
-    const result = await routeIntent(adapter, fallback, image?.base64, undefined, ctrl.signal, principles)
-    const product = extractProduct(result, fallback)
+    const product = await parseProduct(adapter, text, image?.base64, ctrl.signal, principles)
     setParsed(product)
     return product
   }
 
-  async function handleImpulse() {
+  /** Run an exit: parse first (shared), then route to the chosen destination. */
+  async function runExit(exit: Exit, act: (p: Product) => Promise<void> | void) {
     if (busy) return
-    setBusy('impulse')
+    setBusy(exit)
     try {
       const product = await ensureParsed()
       if (!product) return
+      await act(product)
+    } catch (err) {
+      if ((err as Error).name !== 'AbortError') setError(`出错了：${(err as Error).message || '请稍后重试'}`)
+    } finally {
+      setBusy(null)
+    }
+  }
+
+  // 忍住，先忍忍 → 冲动记录（带冷静期倒计时）
+  function handleImpulse() {
+    return runExit('impulse', async (product) => {
       await impulseStore.add(
         { item_name: product.item_name, estimated_price: product.estimated_price, season_tag: 'year_round', source: '我现在想买' },
         cooldownHours,
       )
       onClose()
-    } catch (err) {
-      if ((err as Error).name !== 'AbortError') setError(`出错了：${(err as Error).message || '请稍后重试'}`)
-    } finally {
-      setBusy(null)
-    }
+    })
   }
 
-  async function handleResearch() {
-    if (busy) return
-    setBusy('research')
-    try {
-      const product = await ensureParsed()
-      if (!product) return
+  // 加进清单再想想 → 待购清单
+  function handleWishlist() {
+    return runExit('wishlist', async (product) => {
+      await wishlistStore.add({
+        item_name: product.item_name,
+        estimated_price: product.estimated_price,
+        category: null,
+        season_tag: 'year_round',
+        need_intensity: null,
+        worthiness_score: null,
+        worthiness_reason: null,
+      })
+      onClose()
+    })
+  }
+
+  // 确定要买，记一笔 → 执行层记账（不进冷静期）
+  function handleBuy() {
+    return runExit('buy', (product) => {
       onClose()
       navigate('/execution', {
-        state: { prefill: { category: product.item_name, estimatedPrice: product.estimated_price } },
+        state: { prefill: { category: product.item_name, estimatedPrice: product.estimated_price, skipToRecording: true } },
       })
-    } catch (err) {
-      if ((err as Error).name !== 'AbortError') setError(`出错了：${(err as Error).message || '请稍后重试'}`)
-    } finally {
-      setBusy(null)
-    }
+    })
   }
 
   return (
@@ -186,21 +191,27 @@ export function BuyDrawer({ onClose }: { onClose: () => void }) {
 
         {error && <p className="mt-3 text-[13px] text-red-500">{error}</p>}
 
-        <div className="mt-5 flex gap-2.5">
+        {/* Three user-chosen exits (bug8) — the app no longer forces a cooldown. */}
+        <div className="mt-5 flex flex-col gap-2.5">
           <Button
             variant="outline"
-            className="flex-1"
             onClick={() => void handleImpulse()}
             disabled={!hasInput || !!busy}
           >
-            {busy === 'impulse' ? '分析中…' : '记录冲动，先忍忍'}
+            {busy === 'impulse' ? '分析中…' : '忍住，先忍忍'}
           </Button>
           <Button
-            className="flex-1"
-            onClick={() => void handleResearch()}
+            variant="outline"
+            onClick={() => void handleWishlist()}
             disabled={!hasInput || !!busy}
           >
-            {busy === 'research' ? '分析中…' : '去研究它 →'}
+            {busy === 'wishlist' ? '分析中…' : '加进清单再想想'}
+          </Button>
+          <Button
+            onClick={() => void handleBuy()}
+            disabled={!hasInput || !!busy}
+          >
+            {busy === 'buy' ? '分析中…' : '确定要买，记一笔 →'}
           </Button>
         </div>
       </ImageDropZone>

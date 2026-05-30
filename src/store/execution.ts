@@ -104,7 +104,7 @@ export const useExecutionStore = create<ExecutionStore>()(persist((set, get) => 
   },
 
   createSession: async (category, timerDuration) => {
-    const { data } = await supabase
+    const { data, error } = await supabase
       .from('execution_sessions')
       .insert({
         category,
@@ -113,11 +113,17 @@ export const useExecutionStore = create<ExecutionStore>()(persist((set, get) => 
       })
       .select('id')
       .single()
-    return (data?.id as string) ?? ''
+    // Surface the failure instead of returning '' — an empty string later lands in
+    // transactions.execution_session_id (a uuid column) and triggers the
+    // `invalid input syntax for type uuid: ""` 400 the user was seeing.
+    if (error || !data?.id) throw new Error(error?.message || '无法创建执行会话，请检查网络与登录态')
+    return data.id as string
   },
 
   endSession: async (id, decision, itemPurchased) => {
-    await supabase
+    // No-op on an empty id (e.g. a necessity quick-record never opened a session).
+    if (!id) return
+    const { error } = await supabase
       .from('execution_sessions')
       .update({
         decision,
@@ -125,6 +131,7 @@ export const useExecutionStore = create<ExecutionStore>()(persist((set, get) => 
         ended_at: new Date().toISOString(),
       })
       .eq('id', id)
+    if (error) throw new Error(error.message)
   },
 }), {
   name: 'kura-execution',

@@ -1,11 +1,15 @@
 import { useState } from 'react'
-import { X, Plus, Pencil } from 'lucide-react'
+import { X, Plus, Pencil, Sparkles } from 'lucide-react'
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card'
 import { Button } from '@/components/ui/button'
 import { Input } from '@/components/ui/input'
 import { useSubscriptionStore } from '@/store/subscriptions'
+import { useSettingsStore } from '@/store/settings'
+import { routeIntent } from '@/lib/ai/router'
 import { formatAmount, cn } from '@/lib/utils'
 import type { Subscription, SubscriptionCategory } from '@/types/db'
+
+const SUB_CATEGORIES: SubscriptionCategory[] = ['streaming', 'tools', 'transport', 'other']
 
 const CATEGORIES: { value: SubscriptionCategory; label: string }[] = [
   { value: 'streaming', label: '流媒体' },
@@ -27,9 +31,46 @@ const EMPTY: Draft = { name: '', amount: '', billing_day: '', category: 'other' 
  */
 export function SubscriptionManager() {
   const { items, add, update, remove, toggleActive } = useSubscriptionStore()
+  const adapter = useSettingsStore((s) => s.adapter)
   const [editingId, setEditingId] = useState<string | null>(null) // null = not editing; 'new' = add form
   const [draft, setDraft] = useState<Draft>(EMPTY)
   const [busy, setBusy] = useState(false)
+
+  // ── AI natural-language add (bug7) ──
+  const [aiText, setAiText] = useState('')
+  const [aiBusy, setAiBusy] = useState(false)
+  const [aiError, setAiError] = useState<string | null>(null)
+
+  async function handleAIParse() {
+    const v = aiText.trim()
+    if (!v || aiBusy) return
+    if (!adapter) { setAiError('请先在设置里填写 API Key'); return }
+    setAiBusy(true); setAiError(null)
+    try {
+      const result = await routeIntent(adapter, v)
+      const d = result.data as Record<string, unknown>
+      const name = typeof d.name === 'string' ? d.name : ''
+      const amount = typeof d.amount === 'number' ? d.amount : Number(d.amount)
+      const billingDay = typeof d.billing_day === 'number' ? d.billing_day : Number(d.billing_day)
+      if (result.module !== 'subscription' || !name) {
+        setAiError('没识别成订阅，请换种说法或手动填写')
+        return
+      }
+      const category = (SUB_CATEGORIES as string[]).includes(String(d.category)) ? (d.category as SubscriptionCategory) : 'other'
+      // Drop the parsed result into the edit form so the user confirms/tweaks
+      // before it's saved — manual entry stays the fallback.
+      setDraft({
+        name,
+        amount: amount > 0 ? String(amount) : '',
+        billing_day: billingDay >= 1 && billingDay <= 31 ? String(billingDay) : '',
+        category,
+      })
+      setEditingId('new')
+      setAiText('')
+    } catch (err) {
+      setAiError(`解析失败：${(err as Error).message || '请稍后重试'}`)
+    } finally { setAiBusy(false) }
+  }
 
   function openAdd() { setDraft(EMPTY); setEditingId('new') }
   function openEdit(s: Subscription) {
@@ -64,8 +105,26 @@ export function SubscriptionManager() {
       <CardHeader><CardTitle>订阅管理</CardTitle></CardHeader>
       <CardContent className="flex flex-col gap-4">
         <p className="text-[13px] leading-relaxed text-ink-4">
-          周期性固定订阅。每月扣款日自动记一笔基础支出，扣款前 3 天主页提醒。也可在对话框直接说「我有 X 会员每月 N 号扣 M 块」。
+          周期性固定订阅。每月扣款日自动记一笔基础支出，扣款前 3 天主页提醒。
         </p>
+
+        {/* AI 自然语言添加（bug7）：一句话解析 → 预填表单确认 */}
+        <div className="flex flex-col gap-2 rounded-xl border-theme bg-card-alt p-3">
+          <div className="flex items-center gap-1.5 text-[12px] font-medium text-ink-3">
+            <Sparkles size={13} /> 用一句话添加
+          </div>
+          <div className="flex gap-2">
+            <input
+              value={aiText}
+              onChange={(e) => { setAiText(e.target.value); setAiError(null) }}
+              onKeyDown={(e) => { if (e.key === 'Enter') void handleAIParse() }}
+              placeholder="如：百度网盘会员每月 8 号扣 25 块"
+              className="flex-1 bg-transparent text-[14px] text-ink outline-none placeholder:text-ink-4"
+            />
+            <Button size="sm" onClick={() => void handleAIParse()} disabled={!aiText.trim() || aiBusy}>{aiBusy ? '识别中…' : 'AI 解析'}</Button>
+          </div>
+          {aiError && <p className="text-[12px] text-red-500">{aiError}</p>}
+        </div>
 
         {items.length > 0 ? (
           <ul className="flex flex-col">

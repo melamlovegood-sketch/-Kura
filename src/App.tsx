@@ -5,6 +5,7 @@ import { Home } from '@/pages/Home'
 import { Wishlist } from '@/pages/Wishlist'
 import { Execution } from '@/pages/Execution'
 import { Settings } from '@/pages/Settings'
+import { ConsumptionView } from '@/pages/ConsumptionView'
 import { SplashScreen } from '@/components/SplashScreen'
 import { Onboarding } from '@/components/onboarding/Onboarding'
 import { useSettingsStore } from '@/store/settings'
@@ -67,6 +68,7 @@ export function App() {
           <Route path="/wishlist"  element={<Wishlist />} />
           <Route path="/execution" element={<Execution />} />
           <Route path="/settings"  element={<Settings />} />
+          <Route path="/consumption" element={<ConsumptionView />} />
         </Routes>
       </AppLayout>
       <Onboarding />

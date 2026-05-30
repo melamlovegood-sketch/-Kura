@@ -1,23 +1,18 @@
+import { Lock } from 'lucide-react'
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card'
 import { useAchievementsStore } from '@/store/achievements'
-import { ACHIEVEMENTS, NON_COLLECTOR_KEYS, type AchievementDef } from '@/lib/achievements'
-import { cn } from '@/lib/utils'
+import { ACHIEVEMENTS } from '@/lib/achievements'
 
 /**
- * 我的成就 (SPEC_PHASE2 §8) — streak header + the 10-badge grid. Unlocked badges
- * are highlighted; locked ones are dimmed with a progress hint where numeric
- * progress applies.
+ * 我的成就 (SPEC_PHASE2 §8) — streak header + the 10-badge grid.
+ *
+ * 神秘感 (方案 B / bug5): locked badges keep their name and unlock condition
+ * hidden behind a lock silhouette — only the "已解锁 X/10" counter is shown — so
+ * discovering each achievement stays a surprise. Unlocked badges show normally.
  */
 export function AchievementsSection() {
-  const { unlocked, streak, stats } = useAchievementsStore()
+  const { unlocked, streak } = useAchievementsStore()
   const unlockedSet = new Set(unlocked)
-  const unlockedOthers = NON_COLLECTOR_KEYS.filter((k) => unlockedSet.has(k)).length
-
-  function hint(def: AchievementDef): string {
-    if (def.key === 'squirrel_collector') return `${unlockedOthers} / ${NON_COLLECTOR_KEYS.length}`
-    if (stats && def.progress) return def.progress(stats) ?? def.desc
-    return def.desc
-  }
 
   return (
     <Card>
@@ -41,19 +36,27 @@ export function AchievementsSection() {
         <div className="grid grid-cols-2 gap-2.5 sm:grid-cols-3">
           {ACHIEVEMENTS.map((def) => {
             const isUnlocked = unlockedSet.has(def.key)
+            if (!isUnlocked) {
+              // 神秘占位：隐藏名称与达成条件，只留剪影/锁。
+              return (
+                <div
+                  key={def.key}
+                  className="flex flex-col items-center gap-1 rounded-xl border-theme bg-card-alt p-3 text-center"
+                >
+                  <span className="flex h-[26px] items-center text-ink-4"><Lock size={20} /></span>
+                  <span className="text-[13px] font-medium text-ink-3">？？？</span>
+                  <span className="text-[11px] leading-snug text-ink-4">尚未解锁</span>
+                </div>
+              )
+            }
             return (
               <div
                 key={def.key}
-                className={cn(
-                  'flex flex-col items-center gap-1 rounded-xl border-theme p-3 text-center transition-colors',
-                  isUnlocked ? 'bg-amber-50/60 border-amber-200' : 'bg-card-alt',
-                )}
+                className="flex flex-col items-center gap-1 rounded-xl border-amber-200 bg-amber-50/60 p-3 text-center"
               >
-                <span className={cn('text-[26px] leading-none', !isUnlocked && 'opacity-25 grayscale')}>{def.emoji}</span>
-                <span className={cn('text-[13px] font-medium', isUnlocked ? 'text-ink' : 'text-ink-3')}>{def.title}</span>
-                <span className="text-[11px] leading-snug text-ink-4">
-                  {isUnlocked ? def.desc : hint(def)}
-                </span>
+                <span className="text-[26px] leading-none">{def.emoji}</span>
+                <span className="text-[13px] font-medium text-ink">{def.title}</span>
+                <span className="text-[11px] leading-snug text-ink-4">{def.desc}</span>
               </div>
             )
           })}

@@ -41,7 +41,9 @@ export async function addExecutionTransaction(opts: {
       category_main,
       description: opts.description || null,
       source: 'text',
-      execution_session_id: opts.executionSessionId,
+      // A uuid column rejects '' — coalesce an empty/missing session id to null so
+      // a transaction can still be recorded even when no session was created.
+      execution_session_id: opts.executionSessionId || null,
     })
     .select('id')
     .single()

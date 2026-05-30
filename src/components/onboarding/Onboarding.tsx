@@ -6,6 +6,8 @@ import { useBudgetStore } from '@/store/budget'
 import { useWishlistStore } from '@/store/wishlist'
 import { useWishPoolStore } from '@/store/wishpool'
 import { useSettingsStore } from '@/store/settings'
+import { usePrinciplesStore } from '@/store/principles'
+import { CostPerspectiveFields, EMPTY_COST_VALUE, type CostPerspectiveValue } from '@/components/cost/CostPerspectiveFields'
 import { createAdapter, DEFAULT_MODELS } from '@/lib/ai/factory'
 import { routeIntent } from '@/lib/ai/router'
 import { cn } from '@/lib/utils'
@@ -15,7 +17,7 @@ import type { ParsedWishlistItem } from '@/types/db'
 export const DONE_KEY = 'kura-onboarding-done'
 export const API_SKIPPED_KEY = 'kura-onboarding-api-skipped'
 
-type Phase = 'checking' | 'hidden' | 0 | 1 | 2 | 3
+type Phase = 'checking' | 'hidden' | 0 | 1 | 2 | 3 | 4 | 5
 
 const PROVIDERS: { value: AIProvider; label: string }[] = [
   { value: 'claude', label: 'Anthropic Claude' },
@@ -25,15 +27,17 @@ const PROVIDERS: { value: AIProvider; label: string }[] = [
 ]
 
 /**
- * Cold-start guide. Shows a 4-step full-screen flow only on a genuinely fresh
- * install — no budget, no transactions, no wishlist items. Any step can be
- * skipped (which exits straight to Home). Marks `kura-onboarding-done` once
- * finished or skipped-all so it never shows again.
+ * Cold-start guide. Shows a full-screen flow only on a genuinely fresh install —
+ * no budget, no transactions, no wishlist items. Every step can be skipped (which
+ * advances to the next step, not straight out). Marks `kura-onboarding-done` once
+ * finished so it never shows again.
  *
  * Phase 0: API Key   — validate before advancing; skip sets API_SKIPPED_KEY
  * Phase 1: Budget    — set monthly limits
- * Phase 2: Wish      — pick a wish-pool goal
- * Phase 3: Done      — finish screen
+ * Phase 2: 代价视角   — identity + 月生活费/伙食费 (bug4)
+ * Phase 3: Wish      — pick a wish-pool goal
+ * Phase 4: 消费原则   — describe spending principles, skippable (bug10)
+ * Phase 5: Done      — finish screen
  */
 export function Onboarding() {
   const [phase, setPhase] = useState<Phase>('checking')
@@ -79,10 +83,12 @@ export function Onboarding() {
   return (
     <div className="fixed inset-0 z-[55] flex items-center justify-center bg-page px-6">
       <div className="w-full max-w-[420px]">
-        {phase === 0 && <ApiKeyStep onSkip={skipApiKey} onNext={() => setPhase(1)} />}
-        {phase === 1 && <BudgetStep onSkip={finish} onNext={() => setPhase(2)} />}
-        {phase === 2 && <WishStep   onSkip={finish} onNext={() => setPhase(3)} />}
-        {phase === 3 && <DoneStep   onStart={finish} />}
+        {phase === 0 && <ApiKeyStep     onSkip={skipApiKey}        onNext={() => setPhase(1)} />}
+        {phase === 1 && <BudgetStep     onSkip={() => setPhase(2)} onNext={() => setPhase(2)} />}
+        {phase === 2 && <CostStep       onSkip={() => setPhase(3)} onNext={() => setPhase(3)} />}
+        {phase === 3 && <WishStep       onSkip={() => setPhase(4)} onNext={() => setPhase(4)} />}
+        {phase === 4 && <PrinciplesStep onSkip={() => setPhase(5)} onNext={() => setPhase(5)} />}
+        {phase === 5 && <DoneStep       onStart={finish} />}
       </div>
     </div>
   )
@@ -205,7 +211,41 @@ function BudgetStep({ onSkip, onNext }: { onSkip: () => void; onNext: () => void
   )
 }
 
-/* ── Step 2: Wish ─────────────────────────────────────────────────────── */
+/* ── Step 2: 代价视角 (bug4) ───────────────────────────────────────────── */
+
+function CostStep({ onSkip, onNext }: { onSkip: () => void; onNext: () => void }) {
+  const [cost, setCost] = useState<CostPerspectiveValue>(EMPTY_COST_VALUE)
+  const [saving, setSaving] = useState(false)
+
+  async function handleNext() {
+    setSaving(true)
+    try {
+      const num = (s: string) => { const n = Number(s); return s.trim() && n > 0 ? n : null }
+      await useSettingsStore.getState().update({
+        identity: cost.identity,
+        monthlyIncome:     cost.identity ? num(cost.income) : null,
+        monthlyFoodBudget: cost.identity === 'student' ? num(cost.foodBudget) : null,
+        dailyWorkHours:    cost.identity === 'worker' ? num(cost.workHours) : null,
+      })
+      onNext()
+    } finally { setSaving(false) }
+  }
+
+  return (
+    <StepShell>
+      <div>
+        <p className="font-serif text-[22px] text-ink">把钱换算成你有感的代价</p>
+        <p className="mt-2 text-[15px] leading-relaxed text-ink-3">选个身份，金额就会换算成你熟悉的尺度。</p>
+      </div>
+
+      <CostPerspectiveFields value={cost} onChange={setCost} />
+
+      <Actions skipLabel="跳过" onSkip={onSkip} nextLabel={saving ? '保存中…' : '确认，下一步'} onNext={() => void handleNext()} nextDisabled={saving} />
+    </StepShell>
+  )
+}
+
+/* ── Step 3: Wish ─────────────────────────────────────────────────────── */
 
 function WishStep({ onSkip, onNext }: { onSkip: () => void; onNext: () => void }) {
   const [text, setText] = useState('')
@@ -247,7 +287,58 @@ function WishStep({ onSkip, onNext }: { onSkip: () => void; onNext: () => void }
   )
 }
 
-/* ── Step 3: Done ─────────────────────────────────────────────────────── */
+/* ── Step 4: 消费原则 (bug10) ──────────────────────────────────────────── */
+
+function PrinciplesStep({ onSkip, onNext }: { onSkip: () => void; onNext: () => void }) {
+  const [text, setText] = useState('')
+  const [busy, setBusy] = useState(false)
+
+  async function handleNext() {
+    const v = text.trim()
+    if (!v) { onNext(); return }
+    setBusy(true)
+    try {
+      const adapter = useSettingsStore.getState().adapter
+      let added = false
+      if (adapter) {
+        try {
+          const r = await routeIntent(adapter, v)
+          const items = (r.data as { items?: unknown }).items
+          if (r.module === 'principles' && Array.isArray(items)) {
+            await usePrinciplesStore.getState().add(items as string[])
+            added = true
+          }
+        } catch { /* fall through to raw save */ }
+      }
+      if (!added) await usePrinciplesStore.getState().add([v])
+      onNext()
+    } finally { setBusy(false) }
+  }
+
+  return (
+    <StepShell>
+      <div>
+        <p className="font-serif text-[22px] text-ink">你的消费原则是什么？</p>
+        <p className="mt-2 text-[15px] leading-relaxed text-ink-3">
+          用大白话写下来，AI 会在每次分析时帮你守住它。不想填也可以跳过。
+        </p>
+      </div>
+
+      <textarea
+        value={text}
+        onChange={(e) => setText(e.target.value)}
+        placeholder={'例："宁可买一件贵的也不买几件便宜货"'}
+        rows={3}
+        autoFocus
+        className="w-full resize-none rounded-xl border-theme bg-card-alt px-3.5 py-2.5 text-[15px] text-ink placeholder:text-ink-4 focus:bg-card focus:outline-none focus:ring-1 focus:ring-[var(--border)] transition-colors"
+      />
+
+      <Actions skipLabel="跳过" onSkip={onSkip} nextLabel={busy ? '处理中…' : '确认，下一步'} onNext={() => void handleNext()} nextDisabled={busy} />
+    </StepShell>
+  )
+}
+
+/* ── Step 5: Done ─────────────────────────────────────────────────────── */
 
 function DoneStep({ onStart }: { onStart: () => void }) {
   return (

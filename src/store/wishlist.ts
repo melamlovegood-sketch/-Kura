@@ -59,33 +59,39 @@ export const useWishlistStore = create<WishlistStore>()(persist((set, get) => ({
 
   pin: async (item) => {
     // Unpin all others
-    await supabase
+    const unpin = await supabase
       .from('wishlist_items')
       .update({ is_focus: false })
       .eq('is_focus', true)
+    if (unpin.error) throw new Error(unpin.error.message)
 
     // Pin this item
-    await supabase
+    const pin = await supabase
       .from('wishlist_items')
       .update({ is_focus: true })
       .eq('id', item.id)
+    if (pin.error) throw new Error(pin.error.message)
 
     // Create wish_pool if none exists for this item
-    const { data: existing } = await supabase
+    const { data: existing, error: selErr } = await supabase
       .from('wish_pools')
       .select('id')
       .eq('focus_item_id', item.id)
       .is('completed_at', null)
       .maybeSingle()
+    if (selErr) throw new Error(selErr.message)
 
     if (!existing) {
-      await supabase.from('wish_pools').insert({
+      const ins = await supabase.from('wish_pools').insert({
         focus_item_id: item.id,
         target_amount: item.estimated_price ?? 0,
       })
+      // Errors here (e.g. RLS 401 on wish_pools) were the reason pin silently did
+      // nothing — surface them so the UI can react instead of faking success.
+      if (ins.error) throw new Error(ins.error.message)
     }
 
-    // Update local state
+    // Update local state only after the writes succeeded.
     set({
       items: get().items.map((i) => ({ ...i, is_focus: i.id === item.id })),
     })

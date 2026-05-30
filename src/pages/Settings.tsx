@@ -1,19 +1,16 @@
-import { useEffect, useRef, useState } from 'react'
-import { X } from 'lucide-react'
+import { useEffect, useState } from 'react'
+import { useNavigate } from 'react-router-dom'
+import { ChevronRight } from 'lucide-react'
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card'
 import { Button } from '@/components/ui/button'
 import { Input } from '@/components/ui/input'
-import { ImageDropZone } from '@/components/ui/image-drop-zone'
 import { useSettingsStore, DEFAULT_MODELS } from '@/store/settings'
 import { usePrinciplesStore } from '@/store/principles'
 import { SubscriptionManager } from '@/components/subscription/SubscriptionManager'
 import { AchievementsSection } from '@/components/achievements/AchievementsSection'
-import { routeIntent } from '@/lib/ai/router'
-import { fileToBase64 } from '@/lib/utils'
 import { THEME_LABELS, type Theme } from '@/lib/theme'
 import { cn } from '@/lib/utils'
 import type { AIProvider } from '@/lib/ai/types'
-import type { Identity } from '@/lib/costPerspective'
 
 const PROVIDERS: { value: AIProvider; label: string }[] = [
   { value: 'qwen',   label: '通义千问' },
@@ -29,10 +26,6 @@ export function Settings() {
   const [apiKey,   setApiKey]   = useState(store.aiApiKey)
   const [cooldown, setCooldown] = useState(String(store.cooldownHours))
   const [timer,    setTimer]    = useState(String(store.timerMinutes))
-  const [identity,   setIdentity]   = useState<Identity>(store.identity)
-  const [income,     setIncome]     = useState(store.monthlyIncome != null ? String(store.monthlyIncome) : '')
-  const [foodBudget, setFoodBudget] = useState(store.monthlyFoodBudget != null ? String(store.monthlyFoodBudget) : '')
-  const [workHours,  setWorkHours]  = useState(store.dailyWorkHours != null ? String(store.dailyWorkHours) : '')
   const [saving,   setSaving]   = useState(false)
   const [saved,    setSaved]    = useState(false)
 
@@ -41,25 +34,15 @@ export function Settings() {
     setProvider(store.aiProvider); setModel(store.aiModel)
     setApiKey(store.aiApiKey); setCooldown(String(store.cooldownHours))
     setTimer(String(store.timerMinutes))
-    setIdentity(store.identity)
-    setIncome(store.monthlyIncome != null ? String(store.monthlyIncome) : '')
-    setFoodBudget(store.monthlyFoodBudget != null ? String(store.monthlyFoodBudget) : '')
-    setWorkHours(store.dailyWorkHours != null ? String(store.dailyWorkHours) : '')
   }, [store.loaded]) // eslint-disable-line react-hooks/exhaustive-deps
 
   function handleProviderChange(p: AIProvider) { setProvider(p); setModel(DEFAULT_MODELS[p]) }
 
   async function handleSave() {
     setSaving(true)
-    const num = (s: string) => { const n = Number(s); return s.trim() && n > 0 ? n : null }
     await store.update({
       aiProvider: provider, aiModel: model, aiApiKey: apiKey,
       cooldownHours: Number(cooldown) || 72, timerMinutes: Number(timer) || 15,
-      identity,
-      // keep only the fields relevant to the chosen identity
-      monthlyIncome:     identity ? num(income) : null,
-      monthlyFoodBudget: identity === 'student' ? num(foodBudget) : null,
-      dailyWorkHours:    identity === 'worker' ? num(workHours) : null,
     })
     setSaving(false); setSaved(true); setTimeout(() => setSaved(false), 2000)
   }
@@ -67,6 +50,9 @@ export function Settings() {
   return (
     <div className="flex flex-col gap-5 pt-6 w-full max-w-[640px] mx-auto px-6">
       <h1 className="text-base font-medium text-ink">设置</h1>
+
+      {/* ── 我的消费观 entry (bug10): aggregates 消费原则 / 代价视角 / 预算 ── */}
+      <ConsumptionViewEntry />
 
       {/* ── Theme ── */}
       <Card>
@@ -150,73 +136,6 @@ export function Settings() {
         </CardContent>
       </Card>
 
-      {/* ── Cost perspective (代价视角) ── */}
-      <Card>
-        <CardHeader><CardTitle>代价视角</CardTitle></CardHeader>
-        <CardContent className="flex flex-col gap-4">
-          <p className="text-[13px] leading-relaxed text-ink-4">
-            选择身份后，待购清单和冲动卡片会把金额换算成你有感的代价（如「11 天伙食费」「工作 3 小时」）。不填则不显示。
-          </p>
-
-          <div className="flex gap-2">
-            {([
-              { value: null,      label: '不开启' },
-              { value: 'student', label: '🎓 学生' },
-              { value: 'worker',  label: '💼 工作党' },
-            ] as { value: Identity; label: string }[]).map((opt) => (
-              <button
-                key={String(opt.value)}
-                onClick={() => setIdentity(opt.value)}
-                className={cn(
-                  'flex-1 rounded-lg border-theme px-3 py-2 text-[13px] font-medium transition-colors',
-                  identity === opt.value ? 'bg-accent text-on-accent' : 'text-ink-3 hover:bg-card-alt hover:text-ink-2',
-                )}
-              >
-                {opt.label}
-              </button>
-            ))}
-          </div>
-
-          {identity === 'student' && (
-            <>
-              <div>
-                <label className="mb-2 block text-[13px] text-ink-3">月生活费</label>
-                <div className="flex items-center gap-3">
-                  <Input type="number" value={income} onChange={(e) => setIncome(e.target.value)} className="w-32" min={0} placeholder="¥" />
-                  <span className="text-[13px] text-ink-4">元 / 月</span>
-                </div>
-              </div>
-              <div>
-                <label className="mb-2 block text-[13px] text-ink-3">月伙食费</label>
-                <div className="flex items-center gap-3">
-                  <Input type="number" value={foodBudget} onChange={(e) => setFoodBudget(e.target.value)} className="w-32" min={0} placeholder="¥" />
-                  <span className="text-[13px] text-ink-4">元 / 月</span>
-                </div>
-              </div>
-            </>
-          )}
-
-          {identity === 'worker' && (
-            <>
-              <div>
-                <label className="mb-2 block text-[13px] text-ink-3">月薪</label>
-                <div className="flex items-center gap-3">
-                  <Input type="number" value={income} onChange={(e) => setIncome(e.target.value)} className="w-32" min={0} placeholder="¥" />
-                  <span className="text-[13px] text-ink-4">元 / 月</span>
-                </div>
-              </div>
-              <div>
-                <label className="mb-2 block text-[13px] text-ink-3">日工作时长</label>
-                <div className="flex items-center gap-3">
-                  <Input type="number" value={workHours} onChange={(e) => setWorkHours(e.target.value)} className="w-32" min={1} max={24} step={0.5} placeholder="8" />
-                  <span className="text-[13px] text-ink-4">小时 / 天</span>
-                </div>
-              </div>
-            </>
-          )}
-        </CardContent>
-      </Card>
-
       <Button onClick={() => void handleSave()} disabled={saving}>
         {saving ? '保存中…' : saved ? '已保存' : '保存设置'}
       </Button>
@@ -224,8 +143,6 @@ export function Settings() {
       <AchievementsSection />
 
       <SubscriptionManager />
-
-      <PrinciplesSection />
     </div>
   )
 }
@@ -237,73 +154,37 @@ const PROVIDER_HINTS: Record<AIProvider, string> = {
   gemini: 'Google Gemini，默认 gemini-2.0-flash，支持图片。',
 }
 
-function PrinciplesSection() {
-  const { adapter }      = useSettingsStore()
-  const principlesStore  = usePrinciplesStore()
-  const [input, setInput]       = useState('')
-  const [image, setImage]       = useState<{ file: File; base64: string } | null>(null)
-  const [extracting, setExtracting] = useState(false)
-  const fileRef = useRef<HTMLInputElement>(null)
+/**
+ * Settings card that opens 我的消费观 (bug4 + bug10). It surfaces a summary of the
+ * already-saved values (identity / 月收入 / 原则条数) so this place reads as a
+ * status-plus-edit entry rather than a duplicate form.
+ */
+function ConsumptionViewEntry() {
+  const navigate = useNavigate()
+  const { identity, monthlyIncome } = useSettingsStore()
+  const principleCount = usePrinciplesStore((s) => s.items.length)
 
-  function handleFileSelect(base64: string, file: File) { setImage({ file, base64 }) }
-
-  async function handleExtract() {
-    if (!input.trim() && !image) return
-    if (!adapter) { alert('请先在上方填写 API Key 并保存'); return }
-    setExtracting(true)
-    try {
-      const result = await routeIntent(adapter, input.trim() || '请从图片中提取消费原则', image?.base64, undefined, undefined, [])
-      if (result.module === 'principles' && Array.isArray(result.data.items)) {
-        await principlesStore.add(result.data.items as string[]); setInput(''); setImage(null)
-      } else if (input.trim()) {
-        await principlesStore.add([input.trim()]); setInput('')
-      }
-    } finally { setExtracting(false) }
-  }
+  const identityLabel = identity === 'student' ? '🎓 学生' : identity === 'worker' ? '💼 工作党' : '未设置'
+  const incomeText = identity && monthlyIncome != null
+    ? `· ${identity === 'student' ? '月生活费' : '月薪'} ¥${monthlyIncome}`
+    : ''
 
   return (
-    <Card>
-      <CardHeader><CardTitle>个人消费原则</CardTitle></CardHeader>
-      <CardContent className="flex flex-col gap-4">
-        <p className="text-[13px] leading-relaxed text-ink-4">用大白话描述消费理念，或上传文章截图。AI 提取后注入每次分析的上下文。</p>
-
-        <ImageDropZone onFile={handleFileSelect} className="flex flex-col gap-2">
-          {image && (
-            <div className="flex items-center gap-2">
-              <span className="max-w-[200px] truncate text-[13px] text-ink-3">{image.file.name}</span>
-              <button onClick={() => setImage(null)} className="text-ink-4 hover:text-ink-3 transition-colors"><X size={13} /></button>
-            </div>
-          )}
-          <textarea value={input} onChange={(e) => setInput(e.target.value)}
-            placeholder={'描述消费原则，或拖拽文章截图到这里…\n例："宁可买一件贵的也不买几件便宜货"'}
-            rows={3}
-            className="w-full resize-none rounded-xl border-theme bg-card-alt px-3 py-2.5 text-[15px] text-ink placeholder:text-ink-4 focus:bg-card focus:outline-none focus:ring-1 focus:ring-[var(--border)] transition-colors" />
-          <div className="flex items-center gap-3">
-            <button onClick={() => fileRef.current?.click()} className="text-[13px] text-ink-4 hover:text-ink-3 transition-colors">上传截图</button>
-            <input ref={fileRef} type="file" accept="image/*" className="hidden" onChange={async (e) => {
-              const f = e.target.files?.[0]; if (!f) return; handleFileSelect(await fileToBase64(f), f); e.target.value = ''
-            }} />
-            <div className="flex-1" />
-            <Button size="sm" onClick={() => void handleExtract()} disabled={extracting || (!input.trim() && !image)}>
-              {extracting ? 'AI 提取中…' : '添加原则'}
-            </Button>
-          </div>
-        </ImageDropZone>
-
-        {principlesStore.items.length > 0 ? (
-          <ul className="flex flex-col">
-            {principlesStore.items.map((p, i) => (
-              <li key={p.id} className="flex items-start gap-2 py-2.5 text-[15px] border-t-theme first:border-t-0">
-                <span className="mt-0.5 shrink-0 text-[13px] text-ink-4">{i + 1}</span>
-                <span className="flex-1 text-ink-2">{p.content}</span>
-                <button onClick={() => void principlesStore.remove(p.id)} className="mt-0.5 shrink-0 text-ink-4 hover:text-ink-3 transition-colors"><X size={13} /></button>
-              </li>
-            ))}
-          </ul>
-        ) : (
-          <p className="text-[13px] text-ink-4">还没有消费原则</p>
-        )}
-      </CardContent>
-    </Card>
+    <button
+      onClick={() => navigate('/consumption')}
+      className="w-full rounded-2xl border-theme bg-card p-5 text-left transition-colors hover:bg-card-alt"
+    >
+      <div className="flex items-center justify-between">
+        <span className="text-[15px] font-medium text-ink">我的消费观</span>
+        <ChevronRight size={16} className="text-ink-4" />
+      </div>
+      <p className="mt-1 text-[13px] leading-relaxed text-ink-4">
+        消费原则、代价视角、预算——决定 AI 如何替你权衡每一笔。
+      </p>
+      <div className="mt-3 flex flex-wrap gap-x-4 gap-y-1 text-[12px] text-ink-3">
+        <span>代价视角：{identityLabel} {incomeText}</span>
+        <span>消费原则：{principleCount} 条</span>
+      </div>
+    </button>
   )
 }

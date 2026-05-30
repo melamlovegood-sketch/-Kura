@@ -7,7 +7,6 @@ import { MilestoneAnimation } from '@/components/wishpool/MilestoneAnimation'
 import { ImpulseExpiredCard } from '@/components/impulse/ImpulseExpiredCard'
 import { WishlistNudgeCard } from '@/components/wishlist/WishlistNudgeCard'
 import { ReviewCard } from '@/components/review/ReviewCard'
-import { RegretBoardCard } from '@/components/review/RegretBoardCard'
 import { ExpiryReminderCard } from '@/components/transaction/ExpiryReminderCard'
 import { SubscriptionReminderCard } from '@/components/subscription/SubscriptionReminderCard'
 import { DuplicateWarningCard } from '@/components/wishlist/DuplicateWarningCard'
@@ -70,7 +69,6 @@ export function Home() {
         <WishlistNudgeCard item={nudgeItem} onKeep={handleNudgeKeep} onDismiss={(id) => wishlistStore.dismiss(id)} />
       )}
       <StoryNudge />
-      <RegretBoardCard />
 
       <div className="h-16 md:h-0" />
 

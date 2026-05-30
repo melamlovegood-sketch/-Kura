@@ -1,4 +1,4 @@
-import { supabase } from '@/lib/supabase'
+import { db } from '@/lib/db'
 import { analyzePersona, PERSONAS, type PersonaKey } from '@/lib/personaAnalysis'
 import type { AIAdapter, AIMessage } from '@/lib/ai/types'
 
@@ -92,18 +92,18 @@ export async function aggregateMonthData(month: string, now = new Date()): Promi
   const r = monthRange(month)
 
   const [txnsRes, prevTxnsRes, budgetRes, reviewsRes, impulsesRes, savingsRes, poolRes, streakRes] = await Promise.all([
-    supabase.from('transactions').select('amount, category, category_main, description').gte('date', r.startISO).lt('date', r.endISO),
-    supabase.from('transactions').select('amount').gte('date', r.prevStartISO).lt('date', r.startISO),
-    supabase.from('monthly_budgets').select('discretionary_limit').eq('month', month).maybeSingle(),
-    supabase
+    db.from('transactions').select('amount, category, category_main, description').gte('date', r.startISO).lt('date', r.endISO),
+    db.from('transactions').select('amount').gte('date', r.prevStartISO).lt('date', r.startISO),
+    db.from('monthly_budgets').select('discretionary_limit').eq('month', month).maybeSingle(),
+    db
       .from('review_results')
       .select('usage_frequency, worthiness, usage_note, review_tasks!inner(item_name, category, transaction_id, transactions(amount))')
       .gte('completed_at', r.startTs).lt('completed_at', r.endTs)
       .order('completed_at', { ascending: false }),
-    supabase.from('impulse_records').select('status').gte('recorded_at', r.startTs).lt('recorded_at', r.endTs),
-    supabase.from('savings_records').select('amount').gte('recorded_at', r.startTs).lt('recorded_at', r.endTs),
-    supabase.from('v_active_wish_pool').select('focus_item_name, target_amount, saved_amount').maybeSingle(),
-    supabase.from('user_streak').select('current_streak, longest_streak').limit(1).maybeSingle(),
+    db.from('impulse_records').select('status').gte('recorded_at', r.startTs).lt('recorded_at', r.endTs),
+    db.from('savings_records').select('amount').gte('recorded_at', r.startTs).lt('recorded_at', r.endTs),
+    db.from('v_active_wish_pool').select('focus_item_name, target_amount, saved_amount').maybeSingle(),
+    db.from('user_streak').select('current_streak, longest_streak').limit(1).maybeSingle(),
   ])
 
   type Txn = { amount: number | string; category: string; category_main: string; description: string | null }

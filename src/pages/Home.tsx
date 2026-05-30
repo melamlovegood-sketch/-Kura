@@ -14,6 +14,7 @@ import { DuplicateWarningCard } from '@/components/wishlist/DuplicateWarningCard
 import { PriceDropCard } from '@/components/home/PriceDropCard'
 import { BuyDrawer } from '@/components/home/BuyDrawer'
 import { useSettingsStore } from '@/store/settings'
+import { useAuthStore } from '@/store/auth'
 import { API_SKIPPED_KEY } from '@/components/onboarding/Onboarding'
 import { useBudgetStore } from '@/store/budget'
 import { useImpulseStore } from '@/store/impulse'
@@ -53,6 +54,7 @@ export function Home() {
   return (
     <div className="flex min-h-full flex-col gap-3 pt-6 w-full max-w-[640px] mx-auto px-6">
       <MilestoneAnimation />
+      <GuestModeBanner />
       <NoApiKeyBanner />
       <BudgetCard />
       <WishPoolCard />
@@ -118,6 +120,31 @@ function StoryNudge() {
       <p className="text-[11px] font-medium uppercase tracking-[0.14em] text-ink-4">月度复盘</p>
       <p className="mt-1 text-[15px] text-ink">你的{formatMonth(lastMonth)}复盘故事已生成 →</p>
     </button>
+  )
+}
+
+/**
+ * Persistent, non-blocking banner for 本地游客模式: reminds the user their data is
+ * local-only and offers to register. 注册账号 discards the local data and drops to
+ * the Login 注册 tab (see store/auth exitGuestMode).
+ */
+function GuestModeBanner() {
+  const isGuest = useAuthStore((s) => s.status === 'guest')
+  const exitGuest = useAuthStore((s) => s.exitGuestMode)
+  if (!isGuest) return null
+
+  return (
+    <div className="flex items-center justify-between gap-3 rounded-[10px] bg-card-alt border-theme px-4 py-2.5">
+      <p className="text-[13px] text-ink-3">
+        游客模式 · 数据仅存本地
+      </p>
+      <button
+        onClick={exitGuest}
+        className="shrink-0 text-[13px] font-medium text-ink-2 underline-offset-2 hover:underline"
+      >
+        注册账号
+      </button>
+    </div>
   )
 }
 

@@ -1,6 +1,6 @@
 import { create } from 'zustand'
 import { persist, createJSONStorage } from 'zustand/middleware'
-import { supabase } from '@/lib/supabase'
+import { db } from '@/lib/db'
 import { getCurrentUserId } from '@/lib/auth'
 
 export interface Principle {
@@ -23,7 +23,7 @@ export const usePrinciplesStore = create<PrinciplesStore>()(persist((set, get) =
   loaded: false,
 
   load: async () => {
-    const { data } = await supabase
+    const { data } = await db
       .from('personal_principles')
       .select('*')
       .order('order', { ascending: true })
@@ -43,7 +43,7 @@ export const usePrinciplesStore = create<PrinciplesStore>()(persist((set, get) =
       user_id: userId,
     }))
 
-    const { data } = await supabase.from('personal_principles').insert(rows).select()
+    const { data } = await db.from('personal_principles').insert(rows).select()
 
     if (data) {
       set({ items: [...existing, ...(data as Principle[])] })
@@ -51,7 +51,7 @@ export const usePrinciplesStore = create<PrinciplesStore>()(persist((set, get) =
   },
 
   remove: async (id: string) => {
-    await supabase.from('personal_principles').delete().eq('id', id)
+    await db.from('personal_principles').delete().eq('id', id)
     set({ items: get().items.filter((p) => p.id !== id) })
   },
 }), {

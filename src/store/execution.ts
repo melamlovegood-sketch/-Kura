@@ -1,6 +1,6 @@
 import { create } from 'zustand'
 import { persist, createJSONStorage } from 'zustand/middleware'
-import { supabase } from '@/lib/supabase'
+import { db } from '@/lib/db'
 import { getCurrentUserId } from '@/lib/auth'
 
 export interface BrandEntry {
@@ -44,8 +44,8 @@ export const useExecutionStore = create<ExecutionStore>()(persist((set, get) => 
 
   load: async () => {
     const [brandsRes, sopRes] = await Promise.all([
-      supabase.from('brand_library').select('*').order('weight', { ascending: false }),
-      supabase.from('sop_rules').select('*').order('order', { ascending: true }),
+      db.from('brand_library').select('*').order('weight', { ascending: false }),
+      db.from('sop_rules').select('*').order('order', { ascending: true }),
     ])
     set({
       brands: (brandsRes.data as BrandEntry[]) ?? [],
@@ -62,7 +62,7 @@ export const useExecutionStore = create<ExecutionStore>()(persist((set, get) => 
   },
 
   addBrand: async (category, brandName, note) => {
-    const { data } = await supabase
+    const { data } = await db
       .from('brand_library')
       .insert({ category, brand_name: brandName, weight: 5, note: note ?? null, user_id: await getCurrentUserId() })
       .select()
@@ -75,7 +75,7 @@ export const useExecutionStore = create<ExecutionStore>()(persist((set, get) => 
     const brand = get().brands.find((b) => b.id === id)
     if (!brand) return
     const newWeight = brand.weight + delta
-    await supabase
+    await db
       .from('brand_library')
       .update({ weight: newWeight, updated_at: new Date().toISOString() })
       .eq('id', id)
@@ -85,7 +85,7 @@ export const useExecutionStore = create<ExecutionStore>()(persist((set, get) => 
   addSOPRule: async (title, content) => {
     const rules = get().sopRules
     const nextOrder = rules.length ? Math.max(...rules.map((r) => r.order)) + 1 : 1
-    const { data } = await supabase
+    const { data } = await db
       .from('sop_rules')
       .insert({ title, content: content || title, order: nextOrder, user_id: await getCurrentUserId() })
       .select()
@@ -95,17 +95,17 @@ export const useExecutionStore = create<ExecutionStore>()(persist((set, get) => 
   },
 
   updateSOPRule: async (id, patch) => {
-    await supabase.from('sop_rules').update(patch).eq('id', id)
+    await db.from('sop_rules').update(patch).eq('id', id)
     set({ sopRules: get().sopRules.map((r) => (r.id === id ? { ...r, ...patch } : r)) })
   },
 
   deleteSOPRule: async (id) => {
-    await supabase.from('sop_rules').delete().eq('id', id)
+    await db.from('sop_rules').delete().eq('id', id)
     set({ sopRules: get().sopRules.filter((r) => r.id !== id) })
   },
 
   createSession: async (category, timerDuration) => {
-    const { data, error } = await supabase
+    const { data, error } = await db
       .from('execution_sessions')
       .insert({
         category,
@@ -125,7 +125,7 @@ export const useExecutionStore = create<ExecutionStore>()(persist((set, get) => 
   endSession: async (id, decision, itemPurchased) => {
     // No-op on an empty id (e.g. a necessity quick-record never opened a session).
     if (!id) return
-    const { error } = await supabase
+    const { error } = await db
       .from('execution_sessions')
       .update({
         decision,

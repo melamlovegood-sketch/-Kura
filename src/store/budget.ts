@@ -1,6 +1,6 @@
 import { create } from 'zustand'
 import { persist, createJSONStorage } from 'zustand/middleware'
-import { supabase } from '@/lib/supabase'
+import { db } from '@/lib/db'
 import { getCurrentUserId } from '@/lib/auth'
 import type { BudgetData } from '@/types/db'
 
@@ -23,7 +23,7 @@ export const useBudgetStore = create<BudgetStore>()(persist((set) => ({
     set({ loading: true })
     try {
       // v_current_budget filters to current month internally
-      const { data } = await supabase.from('v_current_budget').select('*').maybeSingle()
+      const { data } = await db.from('v_current_budget').select('*').maybeSingle()
       set({ data: (data as BudgetData | null) ?? null })
     } finally {
       // Always clear the spinner — otherwise a failed query leaves the card stuck on "加载中…"
@@ -34,7 +34,7 @@ export const useBudgetStore = create<BudgetStore>()(persist((set) => ({
   upsert: async ({ basic_life_limit, discretionary_limit, total_income }) => {
     const month = new Date().toISOString().slice(0, 7) // YYYY-MM
 
-    const { data: existing } = await supabase
+    const { data: existing } = await db
       .from('monthly_budgets')
       .select('id')
       .eq('month', month)
@@ -48,13 +48,13 @@ export const useBudgetStore = create<BudgetStore>()(persist((set) => ({
     }
 
     if (existing) {
-      await supabase.from('monthly_budgets').update(row).eq('id', existing.id)
+      await db.from('monthly_budgets').update(row).eq('id', existing.id)
     } else {
-      await supabase.from('monthly_budgets').insert({ ...row, user_id: await getCurrentUserId() })
+      await db.from('monthly_budgets').insert({ ...row, user_id: await getCurrentUserId() })
     }
 
     // Refetch to get computed used amounts
-    const { data } = await supabase.from('v_current_budget').select('*').maybeSingle()
+    const { data } = await db.from('v_current_budget').select('*').maybeSingle()
     set({ data: (data as BudgetData | null) ?? null })
   },
 }), {

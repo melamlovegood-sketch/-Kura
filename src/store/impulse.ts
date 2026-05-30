@@ -1,6 +1,6 @@
 import { create } from 'zustand'
 import { persist, createJSONStorage } from 'zustand/middleware'
-import { supabase } from '@/lib/supabase'
+import { db } from '@/lib/db'
 import { getCurrentUserId } from '@/lib/auth'
 import type { ImpulseRecord, ParsedImpulse } from '@/types/db'
 
@@ -19,7 +19,7 @@ export const useImpulseStore = create<ImpulseStore>()(persist((set, get) => ({
   loaded: false,
 
   load: async () => {
-    const { data } = await supabase
+    const { data } = await db
       .from('impulse_records')
       .select('*')
       .neq('status', 'dismissed')
@@ -32,7 +32,7 @@ export const useImpulseStore = create<ImpulseStore>()(persist((set, get) => ({
     const now = new Date()
     const expiresAt = new Date(now.getTime() + cooldownHours * 60 * 60 * 1000)
 
-    const { data } = await supabase
+    const { data } = await db
       .from('impulse_records')
       .insert({
         item_name: parsed.item_name,
@@ -54,13 +54,13 @@ export const useImpulseStore = create<ImpulseStore>()(persist((set, get) => ({
 
   approve: async (record) => {
     // 1. Mark impulse as approved
-    await supabase
+    await db
       .from('impulse_records')
       .update({ status: 'approved' })
       .eq('id', record.id)
 
     // 2. Create wishlist item
-    const { data } = await supabase
+    const { data } = await db
       .from('wishlist_items')
       .insert({
         item_name: record.item_name,
@@ -81,7 +81,7 @@ export const useImpulseStore = create<ImpulseStore>()(persist((set, get) => ({
   },
 
   dismiss: async (id) => {
-    await supabase.from('impulse_records').update({ status: 'dismissed' }).eq('id', id)
+    await db.from('impulse_records').update({ status: 'dismissed' }).eq('id', id)
     set({ items: get().items.filter((r) => r.id !== id) })
   },
 }), {

@@ -1,7 +1,8 @@
 import { create } from 'zustand'
 import { persist, createJSONStorage } from 'zustand/middleware'
-import { supabase } from '@/lib/supabase'
+import { db } from '@/lib/db'
 import { getCurrentUserId } from '@/lib/auth'
+import { isGuestMode } from '@/lib/guestMode'
 import { useExecutionStore } from './execution'
 import { useSettingsStore } from './settings'
 import {
@@ -50,7 +51,7 @@ export interface MonthlyStory {
 /** Outcome of a generate attempt, so the UI can show the right message. */
 export type StoryResult =
   | { ok: true; story: MonthlyStory }
-  | { ok: false; reason: 'no_adapter' | 'no_activity' | 'error'; message: string }
+  | { ok: false; reason: 'no_adapter' | 'no_activity' | 'error' | 'guest'; message: string }
 
 export interface ReviewStore {
   pendingTasks: ReviewTask[]
@@ -93,7 +94,7 @@ export const useReviewStore = create<ReviewStore>()(persist((set, get) => ({
   storyBusy: false,
 
   load: async () => {
-    const { data } = await supabase
+    const { data } = await db
       .from('review_tasks')
       .select('*')
       .eq('status', 'pending')
@@ -110,7 +111,7 @@ export const useReviewStore = create<ReviewStore>()(persist((set, get) => ({
     const month = `${now.getFullYear()}-${String(now.getMonth() + 1).padStart(2, '0')}`
 
     // regret results this month, with their task + the originating transaction
-    const { data } = await supabase
+    const { data } = await db
       .from('review_results')
       .select('completed_at, review_tasks!inner(item_name, category, transaction_id, transactions(amount, date))')
       .eq('worthiness', 'regret')
@@ -166,7 +167,7 @@ export const useReviewStore = create<ReviewStore>()(persist((set, get) => ({
   },
 
   loadStories: async () => {
-    const { data } = await supabase
+    const { data } = await db
       .from('monthly_stories')
       .select('month, story, persona_key, snapshot')
       .order('month', { ascending: false })
@@ -180,6 +181,9 @@ export const useReviewStore = create<ReviewStore>()(persist((set, get) => ({
   },
 
   generateStory: async (month, opts) => {
+    // 月度复盘故事 depends on cloud data aggregation — not available to guests.
+    if (isGuestMode()) return { ok: false, reason: 'guest', message: '注册账号后可使用月度复盘故事' }
+
     // Same month is never regenerated unless forced.
     const existing = get().stories[month]
     if (existing && !opts?.force) return { ok: true, story: existing }
@@ -195,7 +199,7 @@ export const useReviewStore = create<ReviewStore>()(persist((set, get) => ({
       const story = await generateStoryText(adapter, snapshot)
       const persona_key = snapshot.persona?.key ?? null
 
-      await supabase.from('monthly_stories').upsert(
+      await db.from('monthly_stories').upsert(
         { month, story, persona_key, snapshot, user_id: await getCurrentUserId(), updated_at: new Date().toISOString() },
         { onConflict: 'user_id,month' },
       )
@@ -211,6 +215,7 @@ export const useReviewStore = create<ReviewStore>()(persist((set, get) => ({
   },
 
   ensureLastMonthStory: async () => {
+    if (isGuestMode()) return // story generation is disabled for guests
     const now = new Date()
     const lastMonth = previousMonthString(now)
     // Only auto-generate once the month is over and we haven't stored it yet.
@@ -223,7 +228,7 @@ export const useReviewStore = create<ReviewStore>()(persist((set, get) => ({
   createTasksForPurchase: async ({ item_name, brand, category, transactionId }) => {
     const now = Date.now()
     const user_id = await getCurrentUserId()
-    await supabase.from('review_tasks').insert([
+    await db.from('review_tasks').insert([
       {
         transaction_id: transactionId ?? null,
         item_name,
@@ -249,8 +254,8 @@ export const useReviewStore = create<ReviewStore>()(persist((set, get) => ({
 
   complete: async (task, { usage_frequency, worthiness, usage_note }) => {
     await Promise.all([
-      supabase.from('review_results').insert({ review_task_id: task.id, usage_frequency, worthiness, usage_note: usage_note?.trim() || null, user_id: await getCurrentUserId() }),
-      supabase.from('review_tasks').update({ status: 'completed' }).eq('id', task.id),
+      db.from('review_results').insert({ review_task_id: task.id, usage_frequency, worthiness, usage_note: usage_note?.trim() || null, user_id: await getCurrentUserId() }),
+      db.from('review_tasks').update({ status: 'completed' }).eq('id', task.id),
     ])
 
     // Feed back to brand library

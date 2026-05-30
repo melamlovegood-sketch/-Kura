@@ -1,5 +1,5 @@
 import { create } from 'zustand'
-import { supabase } from '@/lib/supabase'
+import { db } from '@/lib/db'
 import { getCurrentUserId } from '@/lib/auth'
 import { createAdapter, DEFAULT_MODELS } from '@/lib/ai/factory'
 import { applyTheme, type Theme } from '@/lib/theme'
@@ -50,7 +50,7 @@ export const useSettingsStore = create<SettingsStore>((set, get) => ({
   adapter: null,
 
   load: async () => {
-    const { data } = await supabase
+    const { data } = await db
       .from('user_settings')
       .select('*')
       .limit(1)
@@ -86,7 +86,7 @@ export const useSettingsStore = create<SettingsStore>((set, get) => ({
 
     if (patch.theme) { applyTheme(patch.theme); localStorage.setItem('kura-theme', patch.theme) }
 
-    const { data: existing } = await supabase
+    const { data: existing } = await db
       .from('user_settings')
       .select('id')
       .limit(1)
@@ -107,9 +107,9 @@ export const useSettingsStore = create<SettingsStore>((set, get) => ({
     }
 
     if (existing) {
-      await supabase.from('user_settings').update(row).eq('id', existing.id)
+      await db.from('user_settings').update(row).eq('id', existing.id)
     } else {
-      await supabase.from('user_settings').insert({ ...row, user_id: await getCurrentUserId() })
+      await db.from('user_settings').insert({ ...row, user_id: await getCurrentUserId() })
     }
 
     const adapter = next.aiApiKey

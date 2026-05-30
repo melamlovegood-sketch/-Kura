@@ -1,4 +1,4 @@
-import { supabase } from '@/lib/supabase'
+import { db } from '@/lib/db'
 import { formatAmount } from '@/lib/utils'
 import type { AIAdapter, AIMessage } from '@/lib/ai/types'
 import type { BudgetData, WishPoolData } from '@/types/db'
@@ -114,7 +114,7 @@ async function gatherHistory(category: string): Promise<PurchaseHistory> {
 
   // 同品类最近一次购买 — execution_sessions links the free-text Chinese category
   // to an actual bought decision (transactions itself only stores enum categories).
-  const sessionsQuery = supabase
+  const sessionsQuery = db
     .from('execution_sessions')
     .select('item_purchased, ended_at')
     .ilike('category', category.trim())
@@ -125,7 +125,7 @@ async function gatherHistory(category: string): Promise<PurchaseHistory> {
 
   // 同品类复盘后悔率 — fetch recent review verdicts and filter / dedupe in JS so a
   // mismatch in casing or PostgREST embedded-filter quirks can't silently drop data.
-  const reviewsQuery = supabase
+  const reviewsQuery = db
     .from('review_results')
     .select('worthiness, completed_at, review_tasks!inner(category, transaction_id)')
     .order('completed_at', { ascending: false })
@@ -179,7 +179,7 @@ export async function getPreviousSessionDuration(
   category: string,
   excludeSessionId: string,
 ): Promise<number | null> {
-  const { data } = await supabase
+  const { data } = await db
     .from('execution_sessions')
     .select('id, started_at, ended_at')
     .ilike('category', category.trim())

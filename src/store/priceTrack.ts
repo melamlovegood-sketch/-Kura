@@ -1,6 +1,6 @@
 import { create } from 'zustand'
 import { persist, createJSONStorage } from 'zustand/middleware'
-import { supabase } from '@/lib/supabase'
+import { db } from '@/lib/db'
 import { getCurrentUserId } from '@/lib/auth'
 import type { AIAdapter, AIMessage } from '@/lib/ai/types'
 import type { PricePlatform, PriceRecord, PriceTrack } from '@/types/db'
@@ -70,14 +70,14 @@ export const usePriceTrackStore = create<PriceTrackStore>()(persist((set, get) =
   loaded: false,
 
   load: async () => {
-    const { data: tracks } = await supabase
+    const { data: tracks } = await db
       .from('price_tracks')
       .select('*')
       .order('created_at', { ascending: false })
 
     const trackList = (tracks as PriceTrack[]) ?? []
 
-    const { data: recs } = await supabase
+    const { data: recs } = await db
       .from('price_records')
       .select('*')
       .order('recorded_at', { ascending: true })
@@ -92,7 +92,7 @@ export const usePriceTrackStore = create<PriceTrackStore>()(persist((set, get) =
 
   add: async (item_name, price, platform) => {
     const user_id = await getCurrentUserId()
-    const { data: track, error } = await supabase
+    const { data: track, error } = await db
       .from('price_tracks')
       .insert({
         item_name,
@@ -105,7 +105,7 @@ export const usePriceTrackStore = create<PriceTrackStore>()(persist((set, get) =
       .single()
     if (error || !track) throw new Error(error?.message ?? '新建蹲蹲失败')
 
-    const { data: rec } = await supabase
+    const { data: rec } = await db
       .from('price_records')
       .insert({ price_track_id: track.id, price, is_manual: true, user_id })
       .select()
@@ -122,7 +122,7 @@ export const usePriceTrackStore = create<PriceTrackStore>()(persist((set, get) =
     const user_id = await getCurrentUserId()
     const now = new Date().toISOString()
 
-    const { data: rec, error } = await supabase
+    const { data: rec, error } = await db
       .from('price_records')
       .insert({ price_track_id: track_id, price, is_manual: true, user_id })
       .select()
@@ -130,7 +130,7 @@ export const usePriceTrackStore = create<PriceTrackStore>()(persist((set, get) =
     if (error || !rec) throw new Error(error?.message ?? '记录价格失败')
 
     // Keep the track's denormalised current_price / platform in sync.
-    await supabase
+    await db
       .from('price_tracks')
       .update({ current_price: price, platform, last_checked_at: now })
       .eq('id', track_id)
@@ -196,7 +196,7 @@ export const usePriceTrackStore = create<PriceTrackStore>()(persist((set, get) =
   },
 
   dismiss: async (track_id) => {
-    await supabase.from('price_tracks').delete().eq('id', track_id)
+    await db.from('price_tracks').delete().eq('id', track_id)
     const records = { ...get().records }
     delete records[track_id]
     set({ tracks: get().tracks.filter((t) => t.id !== track_id), records })
@@ -206,7 +206,7 @@ export const usePriceTrackStore = create<PriceTrackStore>()(persist((set, get) =
     const track = get().tracks.find((t) => t.id === track_id)
     if (!track) return
 
-    await supabase.from('wishlist_items').insert({
+    await db.from('wishlist_items').insert({
       item_name: track.item_name,
       estimated_price: track.current_price,
       season_tag: 'year_round',

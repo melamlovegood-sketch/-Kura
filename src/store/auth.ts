@@ -1,7 +1,17 @@
 import { create } from 'zustand'
 import { supabase } from '@/lib/supabase'
+import { setGuestModeFlag, clearGuestData, isGuestMode } from '@/lib/guestMode'
 
-type Status = 'loading' | 'authed' | 'guest'
+/**
+ * - loading: resolving the persisted session
+ * - authed:  real Supabase session — data lives in the cloud
+ * - anon:    no session, not guest → show the Login gate
+ * - guest:   本地游客模式 — full app, data lives in localStorage (no account)
+ */
+type Status = 'loading' | 'authed' | 'anon' | 'guest'
+
+/** Login reads this on mount to open straight on the 注册 tab after an upgrade. */
+const REGISTER_INTENT_KEY = 'kura_register_intent'
 
 interface AuthResult {
   error: string | null
@@ -24,6 +34,10 @@ interface AuthStore {
   /** Resend the signup confirmation email containing a fresh OTP. */
   resendOtp: (email: string) => Promise<AuthResult>
   signOut: () => Promise<void>
+  /** Enter 本地游客模式 from the Login screen — no account, data stays local. */
+  enterGuestMode: () => void
+  /** Leave guest mode to register. Local data is discarded (no migration). */
+  exitGuestMode: () => void
 }
 
 /** Map raw Supabase auth errors to friendly Chinese copy. */
@@ -54,19 +68,26 @@ export const useAuthStore = create<AuthStore>((set) => ({
 
   init: () => {
     void supabase.auth.getSession().then(({ data: { session } }) => {
-      set({
-        status: session ? 'authed' : 'guest',
-        userId: session?.user?.id ?? null,
-        email: session?.user?.email ?? null,
-      })
+      if (session) {
+        set({ status: 'authed', userId: session.user.id, email: session.user.email ?? null })
+      } else if (isGuestMode()) {
+        set({ status: 'guest', userId: 'guest', email: null })
+      } else {
+        set({ status: 'anon', userId: null, email: null })
+      }
     })
-    // Fires on sign-in / sign-out / token refresh — keeps the gate in sync.
+    // Fires on sign-in / sign-out / token refresh — keeps the gate in sync. A real
+    // session always wins (and clears any stale guest flag, e.g. a guest who just
+    // upgraded); otherwise fall back to guest mode if its flag is set, else anon.
     supabase.auth.onAuthStateChange((_event, session) => {
-      set({
-        status: session ? 'authed' : 'guest',
-        userId: session?.user?.id ?? null,
-        email: session?.user?.email ?? null,
-      })
+      if (session) {
+        setGuestModeFlag(false)
+        set({ status: 'authed', userId: session.user.id, email: session.user.email ?? null })
+      } else if (isGuestMode()) {
+        set({ status: 'guest', userId: 'guest', email: null })
+      } else {
+        set({ status: 'anon', userId: null, email: null })
+      }
     })
   },
 
@@ -123,4 +144,28 @@ export const useAuthStore = create<AuthStore>((set) => ({
     clearLocalAppState()
     window.location.reload()
   },
+
+  enterGuestMode: () => {
+    // Start from a clean slate so a previous account's cached stores don't leak
+    // into the guest session, then flip the flag and mount the app.
+    clearLocalAppState()
+    setGuestModeFlag(true)
+    set({ status: 'guest', userId: 'guest', email: null })
+  },
+
+  exitGuestMode: () => {
+    // Upgrade to a real account: discard local guest data (no migration), mark the
+    // intent to land on the 注册 tab, then hard-reload into the Login gate.
+    clearGuestData()
+    setGuestModeFlag(false)
+    localStorage.setItem(REGISTER_INTENT_KEY, '1')
+    window.location.reload()
+  },
 }))
+
+/** Login uses this to open on the 注册 tab right after a guest upgrade (one-shot). */
+export function takeRegisterIntent(): boolean {
+  const intent = localStorage.getItem(REGISTER_INTENT_KEY) === '1'
+  if (intent) localStorage.removeItem(REGISTER_INTENT_KEY)
+  return intent
+}

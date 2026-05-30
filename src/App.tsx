@@ -53,10 +53,10 @@ export function App() {
   useEffect(() => { initAuth() }, [initAuth])
 
   useEffect(() => {
-    // Only hydrate the app's data once a user is signed in — every query below
-    // runs under RLS as that user. Keyed on userId so logging in as a different
-    // account re-loads everything for the new owner.
-    if (authStatus !== 'authed' || !userId) return
+    // Hydrate the app's data once a user is signed in (queries run under RLS as
+    // that user) OR in 本地游客模式 (queries hit the localStorage shim as 'guest').
+    // Keyed on userId so switching account/mode re-loads everything for the owner.
+    if ((authStatus !== 'authed' && authStatus !== 'guest') || !userId) return
     // Settings carry the AI adapter; once loaded, auto-generate last month's story
     // (no-op if it already exists or there's no API key).
     void loadSettings().then(() => ensureLastMonthStory())
@@ -84,8 +84,8 @@ export function App() {
     return <SplashScreen onDone={() => setShowSplash(false)} />
   }
 
-  // No session → email/password gate. Nothing else mounts (route protection).
-  if (authStatus === 'guest') {
+  // No session and not a guest → email/password gate. Nothing else mounts.
+  if (authStatus === 'anon') {
     return <Login />
   }
 

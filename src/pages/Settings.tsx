@@ -153,12 +153,30 @@ export function Settings() {
   )
 }
 
-/** Signed-in account + sign-out. signOut purges local stores and reloads to the
- *  login gate (see store/auth). */
+/** Signed-in account + sign-out (or, in 游客模式, the register-to-save entry).
+ *  signOut purges local stores and reloads to the login gate; exitGuestMode
+ *  discards local guest data and drops to the 注册 tab (see store/auth). */
 function AccountCard() {
+  const isGuest = useAuthStore((s) => s.status === 'guest')
   const email = useAuthStore((s) => s.email)
   const signOut = useAuthStore((s) => s.signOut)
+  const exitGuest = useAuthStore((s) => s.exitGuestMode)
   const [busy, setBusy] = useState(false)
+
+  if (isGuest) {
+    return (
+      <Card>
+        <CardHeader><CardTitle>账号</CardTitle></CardHeader>
+        <CardContent className="flex flex-col gap-4">
+          <p className="text-[13px] leading-relaxed text-ink-3">
+            你正在使用游客模式，数据仅保存在本机。注册账号可云端保存、多设备同步。
+            <span className="text-ink-4">（注册会清空当前本地数据，不做迁移）</span>
+          </p>
+          <Button variant="outline" onClick={exitGuest}>注册账号保存数据</Button>
+        </CardContent>
+      </Card>
+    )
+  }
 
   return (
     <Card>

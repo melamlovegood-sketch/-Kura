@@ -1,7 +1,7 @@
 import { useEffect, useRef, useState } from 'react'
 import { Button } from '@/components/ui/button'
 import { Input } from '@/components/ui/input'
-import { useAuthStore } from '@/store/auth'
+import { useAuthStore, takeRegisterIntent } from '@/store/auth'
 import { cn } from '@/lib/utils'
 
 type Tab = 'signin' | 'signup'
@@ -21,12 +21,14 @@ const RESEND_COOLDOWN = 60 // seconds
  * cold-start onboarding because its tables are empty.
  */
 export function Login() {
-  const signIn    = useAuthStore((s) => s.signIn)
-  const signUp    = useAuthStore((s) => s.signUp)
-  const verifyOtp = useAuthStore((s) => s.verifyOtp)
-  const resendOtp = useAuthStore((s) => s.resendOtp)
+  const signIn        = useAuthStore((s) => s.signIn)
+  const signUp        = useAuthStore((s) => s.signUp)
+  const verifyOtp     = useAuthStore((s) => s.verifyOtp)
+  const resendOtp     = useAuthStore((s) => s.resendOtp)
+  const enterGuest    = useAuthStore((s) => s.enterGuestMode)
 
-  const [tab, setTab]           = useState<Tab>('signin')
+  // Land on the 注册 tab when arriving here straight from a guest "升级账号" tap.
+  const [tab, setTab]           = useState<Tab>(() => (takeRegisterIntent() ? 'signup' : 'signin'))
   const [phase, setPhase]       = useState<Phase>('filling')
   const [email, setEmail]       = useState('')
   const [password, setPassword] = useState('')
@@ -208,6 +210,22 @@ export function Login() {
                   className="ml-1 text-ink-2 underline-offset-2 hover:underline"
                 >
                   {tab === 'signin' ? '去注册' : '去登录'}
+                </button>
+              </p>
+
+              {/* ── 游客模式入口 ── */}
+              <div className="flex items-center gap-3">
+                <span className="h-px flex-1 bg-[var(--border)]" />
+                <span className="text-[11px] text-ink-4">或</span>
+                <span className="h-px flex-1 bg-[var(--border)]" />
+              </div>
+              <p className="text-center text-[12px] leading-relaxed text-ink-4">
+                还没想好？
+                <button
+                  onClick={enterGuest}
+                  className="ml-1 font-medium text-ink-2 underline-offset-2 hover:underline"
+                >
+                  先看看，不注册
                 </button>
               </p>
             </>

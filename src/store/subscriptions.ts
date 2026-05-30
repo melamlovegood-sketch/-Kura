@@ -1,7 +1,8 @@
 import { create } from 'zustand'
 import { persist, createJSONStorage } from 'zustand/middleware'
-import { supabase } from '@/lib/supabase'
+import { db } from '@/lib/db'
 import { getCurrentUserId } from '@/lib/auth'
+import { isGuestMode } from '@/lib/guestMode'
 import { useBudgetStore } from './budget'
 import type { ParsedSubscription, Subscription } from '@/types/db'
 
@@ -73,7 +74,7 @@ export const useSubscriptionStore = create<SubscriptionStore>()(persist((set, ge
   dismissed: [],
 
   load: async () => {
-    const { data } = await supabase
+    const { data } = await db
       .from('subscriptions')
       .select('*')
       .order('billing_day', { ascending: true })
@@ -83,7 +84,7 @@ export const useSubscriptionStore = create<SubscriptionStore>()(persist((set, ge
   },
 
   add: async (parsed) => {
-    const { data } = await supabase
+    const { data } = await db
       .from('subscriptions')
       .insert({
         name: parsed.name,
@@ -112,12 +113,12 @@ export const useSubscriptionStore = create<SubscriptionStore>()(persist((set, ge
     if (patch.category !== undefined) row.category = patch.category
     if (patch.is_active !== undefined) row.is_active = patch.is_active
 
-    await supabase.from('subscriptions').update(row).eq('id', id)
+    await db.from('subscriptions').update(row).eq('id', id)
     set({ items: get().items.map((s) => (s.id === id ? { ...s, ...row } as Subscription : s)) })
   },
 
   remove: async (id) => {
-    await supabase.from('subscriptions').delete().eq('id', id)
+    await db.from('subscriptions').delete().eq('id', id)
     set({ items: get().items.filter((s) => s.id !== id) })
   },
 
@@ -128,6 +129,8 @@ export const useSubscriptionStore = create<SubscriptionStore>()(persist((set, ge
   },
 
   generateDueTransactions: async () => {
+    // 订阅自动记账 relies on background scheduling/aggregation — disabled for guests.
+    if (isGuestMode()) return
     const active = get().items.filter((s) => s.is_active)
     if (active.length === 0) return
 
@@ -140,7 +143,7 @@ export const useSubscriptionStore = create<SubscriptionStore>()(persist((set, ge
     const nextMonthStart = m === 11 ? `${y + 1}-01-01` : `${y}-${pad(m + 2)}-01`
 
     // Which subs already have a generated transaction this month?
-    const { data: existing } = await supabase
+    const { data: existing } = await db
       .from('transactions')
       .select('subscription_id')
       .not('subscription_id', 'is', null)
@@ -167,7 +170,7 @@ export const useSubscriptionStore = create<SubscriptionStore>()(persist((set, ge
       }))
 
     if (rows.length === 0) return
-    await supabase.from('transactions').insert(rows)
+    await db.from('transactions').insert(rows)
     void useBudgetStore.getState().refresh()
   },
 

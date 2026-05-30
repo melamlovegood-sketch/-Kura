@@ -1,5 +1,5 @@
 import { create } from 'zustand'
-import { supabase } from '@/lib/supabase'
+import { db } from '@/lib/db'
 import { useSettingsStore } from './settings'
 import { detectDuplicates } from '@/lib/duplicateDetect'
 import type { WishlistItem } from '@/types/db'
@@ -36,7 +36,7 @@ export const useDuplicateStore = create<DuplicateStore>((set) => ({
     since.setMonth(since.getMonth() - 12)
     const sinceISO = since.toISOString().slice(0, 10)
 
-    const { data } = await supabase
+    const { data } = await db
       .from('transactions')
       .select('description, date')
       .neq('category', 'subscription')

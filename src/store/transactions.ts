@@ -1,4 +1,4 @@
-import { supabase } from '@/lib/supabase'
+import { db } from '@/lib/db'
 import { getCurrentUserId } from '@/lib/auth'
 import type { ItemCategory, CategoryMain, ParsedTransaction } from '@/types/db'
 
@@ -6,7 +6,7 @@ export async function addTransaction(
   tx: ParsedTransaction,
   source: 'text' | 'screenshot',
 ): Promise<string> {
-  const { data, error } = await supabase
+  const { data, error } = await db
     .from('transactions')
     .insert({
       date: tx.date,
@@ -34,7 +34,7 @@ export async function addExecutionTransaction(opts: {
 }): Promise<string> {
   const { category, category_main } = guessCategory(opts.executionCategory)
 
-  const { data, error } = await supabase
+  const { data, error } = await db
     .from('transactions')
     .insert({
       date: new Date().toISOString().slice(0, 10),

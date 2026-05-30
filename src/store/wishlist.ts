@@ -1,6 +1,6 @@
 import { create } from 'zustand'
 import { persist, createJSONStorage } from 'zustand/middleware'
-import { supabase } from '@/lib/supabase'
+import { db } from '@/lib/db'
 import { getCurrentUserId } from '@/lib/auth'
 import type { ParsedWishlistItem, WishlistItem } from '@/types/db'
 
@@ -23,7 +23,7 @@ export const useWishlistStore = create<WishlistStore>()(persist((set, get) => ({
   loaded: false,
 
   load: async () => {
-    const { data } = await supabase
+    const { data } = await db
       .from('wishlist_items')
       .select('*')
       .eq('status', 'active')
@@ -34,7 +34,7 @@ export const useWishlistStore = create<WishlistStore>()(persist((set, get) => ({
   },
 
   add: async (parsed, impulseRecordId) => {
-    const { data } = await supabase
+    const { data } = await db
       .from('wishlist_items')
       .insert({
         item_name: parsed.item_name,
@@ -61,21 +61,21 @@ export const useWishlistStore = create<WishlistStore>()(persist((set, get) => ({
 
   pin: async (item) => {
     // Unpin all others
-    const unpin = await supabase
+    const unpin = await db
       .from('wishlist_items')
       .update({ is_focus: false })
       .eq('is_focus', true)
     if (unpin.error) throw new Error(unpin.error.message)
 
     // Pin this item
-    const pin = await supabase
+    const pin = await db
       .from('wishlist_items')
       .update({ is_focus: true })
       .eq('id', item.id)
     if (pin.error) throw new Error(pin.error.message)
 
     // Create wish_pool if none exists for this item
-    const { data: existing, error: selErr } = await supabase
+    const { data: existing, error: selErr } = await db
       .from('wish_pools')
       .select('id')
       .eq('focus_item_id', item.id)
@@ -84,7 +84,7 @@ export const useWishlistStore = create<WishlistStore>()(persist((set, get) => ({
     if (selErr) throw new Error(selErr.message)
 
     if (!existing) {
-      const ins = await supabase.from('wish_pools').insert({
+      const ins = await db.from('wish_pools').insert({
         focus_item_id: item.id,
         target_amount: item.estimated_price ?? 0,
         user_id: await getCurrentUserId(),
@@ -123,18 +123,18 @@ export const useWishlistStore = create<WishlistStore>()(persist((set, get) => ({
 
     set({ items: renumbered })
     await Promise.all(
-      updates.map((u) => supabase.from('wishlist_items').update({ priority: u.priority }).eq('id', u.id)),
+      updates.map((u) => db.from('wishlist_items').update({ priority: u.priority }).eq('id', u.id)),
     )
   },
 
   dismiss: async (id) => {
-    await supabase.from('wishlist_items').update({ status: 'dismissed' }).eq('id', id)
+    await db.from('wishlist_items').update({ status: 'dismissed' }).eq('id', id)
     set({ items: get().items.filter((i) => i.id !== id) })
   },
 
   markNudged: async (id) => {
     const now = new Date().toISOString()
-    await supabase.from('wishlist_items').update({ last_nudged_at: now }).eq('id', id)
+    await db.from('wishlist_items').update({ last_nudged_at: now }).eq('id', id)
     set({
       items: get().items.map((i) =>
         i.id === id ? { ...i, last_nudged_at: now } : i,

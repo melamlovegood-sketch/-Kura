@@ -1,7 +1,7 @@
 import { useEffect, useState } from 'react'
 import { Button } from '@/components/ui/button'
 import { Input } from '@/components/ui/input'
-import { supabase } from '@/lib/supabase'
+import { db } from '@/lib/db'
 import { useBudgetStore } from '@/store/budget'
 import { useWishlistStore } from '@/store/wishlist'
 import { useWishPoolStore } from '@/store/wishpool'
@@ -48,9 +48,9 @@ export function Onboarding() {
     void (async () => {
       try {
         const [b, t, w] = await Promise.all([
-          supabase.from('monthly_budgets').select('id', { count: 'exact', head: true }),
-          supabase.from('transactions').select('id', { count: 'exact', head: true }),
-          supabase.from('wishlist_items').select('id', { count: 'exact', head: true }),
+          db.from('monthly_budgets').select('id', { count: 'exact', head: true }),
+          db.from('transactions').select('id', { count: 'exact', head: true }),
+          db.from('wishlist_items').select('id', { count: 'exact', head: true }),
         ])
         if (cancelled) return
         const errored = !!(b.error || t.error || w.error)

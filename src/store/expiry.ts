@@ -1,6 +1,6 @@
 import { create } from 'zustand'
 import { persist, createJSONStorage } from 'zustand/middleware'
-import { supabase } from '@/lib/supabase'
+import { db } from '@/lib/db'
 
 export interface ExpiringItem {
   id: string
@@ -40,7 +40,7 @@ export const useExpiryStore = create<ExpiryStore>()(persist((set, get) => ({
     const horizonISO = horizon.toISOString().slice(0, 10)
 
     // Items expiring within the window (today .. +7d), nearest first.
-    const { data } = await supabase
+    const { data } = await db
       .from('transactions')
       .select('id, description, expiry_date')
       .not('expiry_date', 'is', null)

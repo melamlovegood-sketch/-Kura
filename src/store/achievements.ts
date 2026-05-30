@@ -1,6 +1,6 @@
 import { create } from 'zustand'
 import { persist, createJSONStorage } from 'zustand/middleware'
-import { supabase } from '@/lib/supabase'
+import { db } from '@/lib/db'
 import { getCurrentUserId } from '@/lib/auth'
 import {
   newlyQualified,
@@ -55,10 +55,10 @@ function computeStreak(impulseDates: Set<string>, firstActivityISO: string | nul
 }
 
 async function persistStreak(current: number, longest: number, today: string) {
-  const { data: existing } = await supabase.from('user_streak').select('id').limit(1).maybeSingle()
+  const { data: existing } = await db.from('user_streak').select('id').limit(1).maybeSingle()
   const row = { current_streak: current, longest_streak: longest, last_check_date: today }
-  if (existing) await supabase.from('user_streak').update(row).eq('id', existing.id)
-  else await supabase.from('user_streak').insert({ ...row, user_id: await getCurrentUserId() })
+  if (existing) await db.from('user_streak').update(row).eq('id', existing.id)
+  else await db.from('user_streak').insert({ ...row, user_id: await getCurrentUserId() })
 }
 
 export const useAchievementsStore = create<AchievementsStore>()(persist((set, get) => ({
@@ -69,8 +69,8 @@ export const useAchievementsStore = create<AchievementsStore>()(persist((set, ge
 
   load: async () => {
     const [{ data: ach }, { data: streakRow }] = await Promise.all([
-      supabase.from('achievements').select('achievement_key'),
-      supabase.from('user_streak').select('current_streak, longest_streak').limit(1).maybeSingle(),
+      db.from('achievements').select('achievement_key'),
+      db.from('user_streak').select('current_streak, longest_streak').limit(1).maybeSingle(),
     ])
 
     set({
@@ -98,13 +98,13 @@ export const useAchievementsStore = create<AchievementsStore>()(persist((set, ge
       impulses,
       firstTx,
     ] = await Promise.all([
-      supabase.from('savings_records').select('amount'),
-      supabase.from('impulse_records').select('*', { count: 'exact', head: true }).lte('expires_at', now.toISOString()),
-      supabase.from('review_results').select('*', { count: 'exact', head: true }).eq('worthiness', 'regret'),
-      supabase.from('transactions').select('*', { count: 'exact', head: true }).not('expiry_date', 'is', null).lte('expiry_date', horizonISO),
-      supabase.from('wish_pools').select('*', { count: 'exact', head: true }).not('completed_at', 'is', null),
-      supabase.from('impulse_records').select('recorded_at'),
-      supabase.from('transactions').select('date').order('date', { ascending: true }).limit(1),
+      db.from('savings_records').select('amount'),
+      db.from('impulse_records').select('*', { count: 'exact', head: true }).lte('expires_at', now.toISOString()),
+      db.from('review_results').select('*', { count: 'exact', head: true }).eq('worthiness', 'regret'),
+      db.from('transactions').select('*', { count: 'exact', head: true }).not('expiry_date', 'is', null).lte('expiry_date', horizonISO),
+      db.from('wish_pools').select('*', { count: 'exact', head: true }).not('completed_at', 'is', null),
+      db.from('impulse_records').select('recorded_at'),
+      db.from('transactions').select('date').order('date', { ascending: true }).limit(1),
     ])
 
     const savingsRows = (savings.data as { amount: number | string }[] | null) ?? []
@@ -148,7 +148,7 @@ export const useAchievementsStore = create<AchievementsStore>()(persist((set, ge
 
     if (toUnlock.length > 0) {
       const user_id = await getCurrentUserId()
-      await supabase
+      await db
         .from('achievements')
         .upsert(toUnlock.map((achievement_key) => ({ achievement_key, user_id })), { onConflict: 'user_id,achievement_key', ignoreDuplicates: true })
     }
@@ -163,7 +163,7 @@ export const useAchievementsStore = create<AchievementsStore>()(persist((set, ge
   unlock: async (key) => {
     if (get().unlocked.includes(key)) return
     const user_id = await getCurrentUserId()
-    await supabase
+    await db
       .from('achievements')
       .upsert([{ achievement_key: key, user_id }], { onConflict: 'user_id,achievement_key', ignoreDuplicates: true })
 
@@ -172,7 +172,7 @@ export const useAchievementsStore = create<AchievementsStore>()(persist((set, ge
     // Unlocking this badge may complete the set → collector.
     const set2 = new Set<string>(unlocked)
     if (NON_COLLECTOR_KEYS.every((k) => set2.has(k)) && !set2.has('squirrel_collector')) {
-      await supabase
+      await db
         .from('achievements')
         .upsert([{ achievement_key: 'squirrel_collector', user_id }], { onConflict: 'user_id,achievement_key', ignoreDuplicates: true })
       unlocked.push('squirrel_collector')

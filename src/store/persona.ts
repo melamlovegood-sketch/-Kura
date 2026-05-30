@@ -1,6 +1,6 @@
 import { create } from 'zustand'
 import { persist, createJSONStorage } from 'zustand/middleware'
-import { supabase } from '@/lib/supabase'
+import { db } from '@/lib/db'
 import { analyzePersona, PERSONAS, type PersonaKey } from '@/lib/personaAnalysis'
 
 const pad = (n: number) => String(n).padStart(2, '0')
@@ -40,10 +40,10 @@ export const usePersonaStore = create<PersonaStore>()(persist((set, get) => ({
     const endTs = end.toISOString()
 
     const [txnsRes, dismissed, regret, streakRow] = await Promise.all([
-      supabase.from('transactions').select('date, amount, category, category_main').gte('date', startISO).lt('date', endISO),
-      supabase.from('impulse_records').select('*', { count: 'exact', head: true }).eq('status', 'dismissed').gte('recorded_at', startTs).lt('recorded_at', endTs),
-      supabase.from('review_results').select('*', { count: 'exact', head: true }).eq('worthiness', 'regret').gte('completed_at', startTs).lt('completed_at', endTs),
-      supabase.from('user_streak').select('longest_streak').limit(1).maybeSingle(),
+      db.from('transactions').select('date, amount, category, category_main').gte('date', startISO).lt('date', endISO),
+      db.from('impulse_records').select('*', { count: 'exact', head: true }).eq('status', 'dismissed').gte('recorded_at', startTs).lt('recorded_at', endTs),
+      db.from('review_results').select('*', { count: 'exact', head: true }).eq('worthiness', 'regret').gte('completed_at', startTs).lt('completed_at', endTs),
+      db.from('user_streak').select('longest_streak').limit(1).maybeSingle(),
     ])
 
     type Txn = { date: string; amount: number | string; category: string; category_main: string }

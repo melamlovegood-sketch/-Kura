@@ -1,6 +1,6 @@
 import { create } from 'zustand'
 import { persist, createJSONStorage } from 'zustand/middleware'
-import { supabase } from '@/lib/supabase'
+import { db } from '@/lib/db'
 import { getCurrentUserId } from '@/lib/auth'
 import type { WishPoolData } from '@/types/db'
 
@@ -49,7 +49,7 @@ export const useWishPoolStore = create<WishPoolStore>()(persist((set, get) => ({
   clearMilestone: () => set({ milestone: null }),
 
   load: async () => {
-    const { data } = await supabase
+    const { data } = await db
       .from('v_active_wish_pool')
       .select('*')
       .maybeSingle()
@@ -85,7 +85,7 @@ export const useWishPoolStore = create<WishPoolStore>()(persist((set, get) => ({
     const pool = get().pool
     if (!pool) return
 
-    await supabase.from('savings_records').insert({
+    await db.from('savings_records').insert({
       wish_pool_id: pool.id,
       amount,
       description: description || null,
@@ -93,7 +93,7 @@ export const useWishPoolStore = create<WishPoolStore>()(persist((set, get) => ({
     })
 
     // Refetch to get updated saved_amount
-    const { data } = await supabase
+    const { data } = await db
       .from('v_active_wish_pool')
       .select('*')
       .maybeSingle()
@@ -101,7 +101,7 @@ export const useWishPoolStore = create<WishPoolStore>()(persist((set, get) => ({
     // Mark completed if target reached
     const updated = data as WishPoolData | null
     if (updated && updated.saved_amount >= updated.target_amount && !updated.completed_at) {
-      await supabase
+      await db
         .from('wish_pools')
         .update({ completed_at: new Date().toISOString() })
         .eq('id', pool.id)

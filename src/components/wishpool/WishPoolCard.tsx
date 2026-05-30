@@ -1,6 +1,8 @@
 import { useEffect, useRef, useState } from 'react'
-import { ChevronDown } from 'lucide-react'
+import { ChevronDown, ArrowUpRight } from 'lucide-react'
 import { CardAlt, CardHeader, CardTitle } from '@/components/ui/card'
+import { ShareCardSheet } from '@/components/share/ShareCardSheet'
+import { WishPoolShareCard } from '@/components/share/WishPoolShareCard'
 import { useWishPoolStore } from '@/store/wishpool'
 import { useCountUp } from '@/hooks/useCountUp'
 import { db } from '@/lib/db'
@@ -43,6 +45,17 @@ function ActivePoolCard({ pool }: { pool: WishPoolData }) {
   const [open, setOpen] = useState(false)
   const [savings, setSavings] = useState<SavingRow[] | null>(null)
 
+  // 分享进度卡：点击「↗ 分享进度」时拉取全部「忍住了」记录（累计次数 + 累计金额），
+  // 再弹出深色分享卡。null = 未打开。
+  const [share, setShare] = useState<{ count: number; total: number } | null>(null)
+
+  async function openShare() {
+    const { data } = await db.from('savings_records').select('amount')
+    const rows = (data as { amount: number | string }[] | null) ?? []
+    const total = rows.reduce((s, r) => s + Number(r.amount), 0)
+    setShare({ count: rows.length, total })
+  }
+
   useEffect(() => {
     if (pool.saved_amount > prevSaved.current) {
       setPulse(true)
@@ -71,7 +84,15 @@ function ActivePoolCard({ pool }: { pool: WishPoolData }) {
     <CardAlt className={cn('transition-shadow duration-500', pulse && 'shadow-lg shadow-amber-100/60')}>
       <CardHeader className="flex flex-row items-center justify-between">
         <CardTitle>许愿池</CardTitle>
-        {completed && <span className="text-[13px] font-medium text-amber-600">目标达成 ✓</span>}
+        <div className="flex items-center gap-3">
+          {completed && <span className="text-[13px] font-medium text-amber-600">目标达成 ✓</span>}
+          <button
+            onClick={() => void openShare()}
+            className="flex items-center gap-0.5 text-[13px] text-ink-4 transition-colors hover:text-ink-3"
+          >
+            <ArrowUpRight size={14} /> 分享进度
+          </button>
+        </div>
       </CardHeader>
 
       <div className="flex flex-col gap-3">
@@ -132,6 +153,18 @@ function ActivePoolCard({ pool }: { pool: WishPoolData }) {
           </div>
         )}
       </div>
+
+      {share && (
+        <ShareCardSheet onClose={() => setShare(null)} filename="kura-许愿池进度">
+          <WishPoolShareCard
+            focusItemName={pool.focus_item_name}
+            targetAmount={pool.target_amount}
+            savedAmount={pool.saved_amount}
+            savingsCount={share.count}
+            savingsTotal={share.total}
+          />
+        </ShareCardSheet>
+      )}
     </CardAlt>
   )
 }

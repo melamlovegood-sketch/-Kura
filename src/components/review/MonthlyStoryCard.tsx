@@ -1,7 +1,9 @@
 import { useRef, useState } from 'react'
-import { Send } from 'lucide-react'
+import { Send, ArrowUpRight } from 'lucide-react'
 import { Card } from '@/components/ui/card'
 import { Button } from '@/components/ui/button'
+import { ShareCardSheet } from '@/components/share/ShareCardSheet'
+import { MonthlyShareCard } from '@/components/share/MonthlyShareCard'
 import { useSettingsStore } from '@/store/settings'
 import { formatMonth } from '@/lib/utils'
 import { buildStoryChatSystemPrompt } from '@/lib/generateMonthlyStory'
@@ -34,6 +36,13 @@ function stripPersonaParagraph(text: string): string {
 export function MonthlyStoryCard({ story }: { story: MonthlyStory }) {
   const persona = story.snapshot.persona
   const body = stripPersonaParagraph(story.story)
+  const [shareOpen, setShareOpen] = useState(false)
+
+  const s = story.snapshot
+  const overspendAmount =
+    s.discretionaryLimit != null && s.discretionaryUsed > s.discretionaryLimit
+      ? s.discretionaryUsed - s.discretionaryLimit
+      : 0
 
   return (
     <Card>
@@ -56,6 +65,32 @@ export function MonthlyStoryCard({ story }: { story: MonthlyStory }) {
 
       {/* ── the story ── */}
       <p className="whitespace-pre-wrap text-[15px] leading-relaxed text-ink-2">{body}</p>
+
+      {/* ── 分享本月 ── */}
+      <div className="mt-3 flex justify-end">
+        <button
+          onClick={() => setShareOpen(true)}
+          className="flex items-center gap-0.5 text-[13px] text-ink-4 transition-colors hover:text-ink-3"
+        >
+          <ArrowUpRight size={14} /> 分享本月
+        </button>
+      </div>
+
+      {shareOpen && (
+        <ShareCardSheet onClose={() => setShareOpen(false)} filename={`kura-${story.month}-月度总结`}>
+          <MonthlyShareCard
+            monthText={formatMonth(story.month)}
+            savingsCount={s.savingsCount}
+            savingsAdded={s.savingsAdded}
+            wishPoolPct={s.wishPoolPct}
+            wishPoolName={s.wishPoolName}
+            overspendAmount={overspendAmount}
+            streak={s.streak}
+            personaTitle={persona?.title ?? null}
+            personaEmoji={persona?.emoji ?? null}
+          />
+        </ShareCardSheet>
+      )}
 
       {/* ── embedded month-scoped chat ── */}
       <div className="mt-4 border-t-theme pt-4">

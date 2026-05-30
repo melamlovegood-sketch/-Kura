@@ -5,9 +5,6 @@ type Status = 'loading' | 'authed' | 'guest'
 
 interface AuthResult {
   error: string | null
-  /** signUp only: true when the account was created but no session was returned
-   *  (email confirmation is still ON in the Supabase dashboard). */
-  needsConfirm?: boolean
 }
 
 interface AuthStore {
@@ -17,7 +14,12 @@ interface AuthStore {
   /** Wire up the session: read the persisted one, then track future changes. */
   init: () => void
   signIn: (email: string, password: string) => Promise<AuthResult>
+  /** Step ①: create the account; Supabase emails a 6-digit OTP (Confirm email ON). */
   signUp: (email: string, password: string) => Promise<AuthResult>
+  /** Step ②: exchange the 6-digit code for a live session (auto sign-in). */
+  verifyOtp: (email: string, token: string) => Promise<AuthResult>
+  /** Resend the signup confirmation email containing a fresh OTP. */
+  resendOtp: (email: string) => Promise<AuthResult>
   signOut: () => Promise<void>
 }
 
@@ -29,6 +31,9 @@ function mapAuthError(message: string): string {
   if (m.includes('password should be at least')) return '密码至少 6 位'
   if (m.includes('unable to validate email') || m.includes('invalid format')) return '邮箱格式不正确'
   if (m.includes('email rate limit')) return '操作过于频繁，请稍后再试'
+  if (m.includes('token has expired') || m.includes('expired')) return '验证码已过期，请重新发送'
+  if (m.includes('invalid') && m.includes('token')) return '验证码错误或已过期'
+  if (m.includes('otp') || m.includes('invalid token')) return '验证码错误或已过期'
   return message
 }
 
@@ -71,15 +76,33 @@ export const useAuthStore = create<AuthStore>((set) => ({
   },
 
   signUp: async (email, password) => {
-    const { data, error } = await supabase.auth.signUp({
+    const { error } = await supabase.auth.signUp({
       email: email.trim(),
       password,
     })
     if (error) return { error: mapAuthError(error.message) }
-    // With email confirmation OFF, signUp returns a live session and the
-    // onAuthStateChange listener flips status → authed. If it's still ON there's
-    // no session yet; tell the caller so it can show the right message.
-    return { error: null, needsConfirm: !data.session }
+    // Confirm email is ON: no session yet. Supabase has emailed a 6-digit OTP;
+    // the UI moves to the verifying step and calls verifyOtp next.
+    return { error: null }
+  },
+
+  verifyOtp: async (email, token) => {
+    const { error } = await supabase.auth.verifyOtp({
+      email: email.trim(),
+      token: token.trim(),
+      type: 'signup',
+    })
+    if (error) return { error: mapAuthError(error.message) }
+    // Success → onAuthStateChange returns a session and flips status → authed.
+    return { error: null }
+  },
+
+  resendOtp: async (email) => {
+    const { error } = await supabase.auth.resend({
+      type: 'signup',
+      email: email.trim(),
+    })
+    return { error: error ? mapAuthError(error.message) : null }
   },
 
   signOut: async () => {

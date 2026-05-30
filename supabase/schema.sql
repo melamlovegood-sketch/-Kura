@@ -32,6 +32,10 @@ CREATE TABLE user_settings (
   ai_api_key      text,
   theme           text NOT NULL DEFAULT 'warm' CHECK (theme IN ('warm', 'cool', 'dark')),
   timer_minutes   integer NOT NULL DEFAULT 15,   -- execution-layer default countdown (minutes)
+  -- 推送通知开关（migration 0014）。关掉的类型 send-reminders Edge Function 跳过。
+  notify_cooldown     boolean NOT NULL DEFAULT true,
+  notify_subscription boolean NOT NULL DEFAULT true,
+  notify_expiry       boolean NOT NULL DEFAULT true,
   created_at      timestamptz NOT NULL DEFAULT now(),
   updated_at      timestamptz NOT NULL DEFAULT now()
 );
@@ -205,6 +209,17 @@ CREATE TABLE review_results (
   worthiness      text NOT NULL CHECK (worthiness IN ('worth', 'okay', 'regret')),
   usage_note      text,
   completed_at    timestamptz NOT NULL DEFAULT now()
+);
+
+-- ─── push_subscriptions ───────────────────────────────────────────────────────
+-- PWA Web Push 订阅（migration 0014）。一个用户可有多条(多设备)；endpoint 全局唯一。
+
+CREATE TABLE push_subscriptions (
+  id           uuid DEFAULT uuid_generate_v4() PRIMARY KEY,
+  user_id      uuid NOT NULL,
+  endpoint     text NOT NULL UNIQUE,
+  subscription jsonb NOT NULL,
+  created_at   timestamptz NOT NULL DEFAULT now()
 );
 
 -- ─── Seed data ────────────────────────────────────────────────────────────────

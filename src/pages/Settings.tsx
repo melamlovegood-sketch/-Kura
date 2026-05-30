@@ -143,6 +143,8 @@ export function Settings() {
         {saving ? '保存中…' : saved ? '已保存' : '保存设置'}
       </Button>
 
+      <NotificationSettings />
+
       <AchievementsSection />
 
       <AccountCard />
@@ -189,6 +191,66 @@ function AccountCard() {
         </Button>
       </CardContent>
     </Card>
+  )
+}
+
+/**
+ * 通知设置 (PWA 推送). Three independent toggles → user_settings.notify_*; the
+ * send-reminders Edge Function skips whichever type is off. Each toggle saves
+ * immediately. 游客模式下没有服务端推送，仅作本地开关展示。
+ */
+function NotificationSettings() {
+  const { notifyCooldown, notifySubscription, notifyExpiry, update } = useSettingsStore()
+  const isGuest = useAuthStore((s) => s.status === 'guest')
+
+  const rows: { label: string; desc: string; value: boolean; key: 'notifyCooldown' | 'notifySubscription' | 'notifyExpiry' }[] = [
+    { label: '冷静期到期提醒', desc: '冷静期结束当天提醒你再决定一次', value: notifyCooldown, key: 'notifyCooldown' },
+    { label: '订阅扣款提醒',   desc: '订阅扣款前 3 天提醒', value: notifySubscription, key: 'notifySubscription' },
+    { label: '保质期提醒',     desc: '临期 7 天内提醒你尽快用掉', value: notifyExpiry, key: 'notifyExpiry' },
+  ]
+
+  return (
+    <Card>
+      <CardHeader><CardTitle>通知</CardTitle></CardHeader>
+      <CardContent className="flex flex-col gap-1">
+        {rows.map((r) => (
+          <div key={r.key} className="flex items-center justify-between gap-3 py-2.5 border-t-theme first:border-t-0">
+            <div className="min-w-0">
+              <p className="text-[15px] text-ink">{r.label}</p>
+              <p className="mt-0.5 text-[13px] text-ink-4">{r.desc}</p>
+            </div>
+            <Toggle checked={r.value} onChange={(v) => void update({ [r.key]: v })} />
+          </div>
+        ))}
+        <p className="mt-2 text-[12px] leading-relaxed text-ink-4">
+          {isGuest
+            ? '游客模式仅本地提醒；注册账号后可接收服务端定时推送。'
+            : '需在浏览器/系统里允许通知权限。每天早 8 点检查并推送。'}
+        </p>
+      </CardContent>
+    </Card>
+  )
+}
+
+function Toggle({ checked, onChange }: { checked: boolean; onChange: (v: boolean) => void }) {
+  return (
+    <button
+      type="button"
+      role="switch"
+      aria-checked={checked}
+      onClick={() => onChange(!checked)}
+      className={cn(
+        'relative h-6 w-11 shrink-0 rounded-full transition-colors',
+        checked ? 'bg-accent' : 'bg-card-alt border-theme',
+      )}
+    >
+      <span
+        className={cn(
+          'absolute top-0.5 h-5 w-5 rounded-full bg-card shadow-sm transition-transform',
+          checked ? 'translate-x-[22px]' : 'translate-x-0.5',
+        )}
+      />
+    </button>
   )
 }
 

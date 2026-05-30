@@ -34,6 +34,9 @@ export default defineConfig({
       },
       workbox: {
         globPatterns: ['**/*.{js,css,html,ico,png,svg}'],
+        // Pull the Web Push handlers (push / notificationclick) into the generated
+        // SW. push-sw.js lives in public/ → served at /push-sw.js.
+        importScripts: ['/push-sw.js'],
         // Take control of open pages immediately and purge stale precaches,
         // so an updated SW never serves an old index.html / JS bundle.
         clientsClaim: true,

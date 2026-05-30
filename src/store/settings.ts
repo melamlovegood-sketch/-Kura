@@ -18,6 +18,10 @@ interface Settings {
   monthlyIncome: number | null
   monthlyFoodBudget: number | null
   dailyWorkHours: number | null
+  // 推送通知开关（各自独立；Edge Function 据此决定是否发某类提醒）
+  notifyCooldown: boolean
+  notifySubscription: boolean
+  notifyExpiry: boolean
 }
 
 interface SettingsStore extends Settings {
@@ -38,6 +42,9 @@ const DEFAULTS: Settings = {
   monthlyIncome: null,
   monthlyFoodBudget: null,
   dailyWorkHours: null,
+  notifyCooldown: true,
+  notifySubscription: true,
+  notifyExpiry: true,
 }
 
 // Apply persisted theme immediately (before Supabase loads)
@@ -69,6 +76,9 @@ export const useSettingsStore = create<SettingsStore>((set, get) => ({
       monthlyIncome:     data.monthly_income ?? null,
       monthlyFoodBudget: data.monthly_food_budget ?? null,
       dailyWorkHours:    data.daily_work_hours ?? null,
+      notifyCooldown:     data.notify_cooldown ?? true,
+      notifySubscription: data.notify_subscription ?? true,
+      notifyExpiry:       data.notify_expiry ?? true,
     }
 
     applyTheme(settings.theme)
@@ -103,6 +113,9 @@ export const useSettingsStore = create<SettingsStore>((set, get) => ({
       monthly_income:      next.monthlyIncome,
       monthly_food_budget: next.monthlyFoodBudget,
       daily_work_hours:    next.dailyWorkHours,
+      notify_cooldown:     next.notifyCooldown,
+      notify_subscription: next.notifySubscription,
+      notify_expiry:       next.notifyExpiry,
       updated_at:     new Date().toISOString(),
     }
 

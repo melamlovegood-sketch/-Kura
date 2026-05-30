@@ -24,6 +24,7 @@ import { useExpiryStore } from '@/store/expiry'
 import { useSubscriptionStore } from '@/store/subscriptions'
 import { useAchievementsStore } from '@/store/achievements'
 import { usePersonaStore } from '@/store/persona'
+import { initPushNotifications } from '@/lib/pushNotification'
 
 export function App() {
   const [showSplash, setShowSplash] = useState(true)
@@ -52,6 +53,14 @@ export function App() {
 
   // Boot the auth listener once.
   useEffect(() => { initAuth() }, [initAuth])
+
+  // Once a real account is signed in, ask for the Notification permission and
+  // register this device for Web Push (server-side reminders). Guests get only
+  // local reminders, so this is gated to authed sessions. Declines are silent.
+  useEffect(() => {
+    if (authStatus !== 'authed') return
+    void initPushNotifications()
+  }, [authStatus])
 
   useEffect(() => {
     // Hydrate the app's data once a user is signed in (queries run under RLS as
